@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.scene.web.*?>
+
+<Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="EventHandling">
+   <children>
+      <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="398.0" prefWidth="600.0">
+         <children>
+            <ListView layoutX="1.0" layoutY="233.0" prefHeight="166.0" prefWidth="174.0" />
+            <Label layoutX="12.0" layoutY="206.0" text="Connected clients" />
+            <TextField layoutX="2.0" layoutY="131.0" prefHeight="25.0" prefWidth="79.0" fx:id="latTextfield" />
+            <TextField layoutX="92.0" layoutY="131.0" prefHeight="25.0" prefWidth="79.0" fx:id="lngTextfield" />
+            <Label layoutX="91.0" layoutY="110.0" text="Longitude" />
+            <Label layoutY="110.0" text="Latitude" />
+            <Button layoutX="14.0" layoutY="76.0" mnemonicParsing="false" text="Fly to" fx:id="missionButton"/>
+            <Button layoutX="96.0" layoutY="76.0" mnemonicParsing="false" text="Go charge" />
+            <CheckBox layoutX="21.0" layoutY="47.0" mnemonicParsing="false" text="Drone not connected" />
+            <Label layoutX="21.0" layoutY="1.0" text="Drone command">
+               <font>
+                  <Font size="18.0" />
+               </font>
+            </Label>
+            <ProgressBar layoutX="83.0" layoutY="190.0" prefHeight="18.0" prefWidth="79.0" progress="1.0" />
+            <Label layoutX="83.0" layoutY="168.0" text=" Battery level" />
+            <Slider blockIncrement="1.0" layoutX="8.0" layoutY="192.0" majorTickUnit="1.0" max="1.0" minorTickCount="1" prefHeight="14.0" prefWidth="71.0" />
+            <Label layoutX="2.0" layoutY="168.0" text="Wifi off" />
+            <WebView fx:id="webView" layoutX="171.0" prefHeight="398.0" prefWidth="428.0" />
+         </children>
+      </AnchorPane>
+   </children>
+</Pane>
