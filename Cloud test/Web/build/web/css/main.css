@@ -1,0 +1,48 @@
+body{
+    font-family: "Trebuchet MS", sans-serif;
+    background-color: azure;
+}
+legend {
+    font-weight: bold;
+}
+#container{
+    width: 1000px;
+    height: auto;
+    margin: 0 auto;
+    background-color: whitesmoke;
+    padding: 10px;
+    border: 1px solid grey;
+    //float: 
+}
+#command_description{
+    margin: 5px;
+    padding: 3px;
+}
+#command_table{
+    
+    
+}
+#command_fieldset{
+
+}
+#parameters_fieldset{
+
+}
+#submit_button{
+    width: auto;
+    height: auto;
+    padding : 0;
+    margin: 0 auto;
+    text-align: center;
+    clear: both;
+}
+.description {
+    font-size: .8em;
+    color: grey;
+}
+#parameters{
+    display: table; 
+}
+span     { display: table-row;  }
+label { display: table-cell; }
+input { display: table-cell; }
