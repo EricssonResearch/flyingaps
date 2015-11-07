@@ -20,13 +20,13 @@
             <hr/>
             <div id="command_table">
                 <form action="index.jsp" >
-                    <fieldset id="config_fieldset">
+                    <!--<fieldset id="config_fieldset">
                         <legend>App Config:</legend>
                         <label for="api_key">API Key</label>
                         <input id="api_key" type="text" maxlength="39" size="39"/>&nbsp;
                         <label for="sender_id">Sender ID</label>
                         <input id="sender_id" type="text" maxlength="12" size="12"/>
-                    </fieldset>
+                    </fieldset>-->
                     <fieldset id="command_fieldset">
                         <legend>Command:</legend>
                         <select id="command_select" onchange="commandSelectedCallback(this.selectedIndex)">
