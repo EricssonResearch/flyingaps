@@ -1,6 +1,6 @@
 import java.io.Serializable;
 
-enum MessageType {LIFT, LAND, HOVER, GOTO, WIFION, WIFIOFF};
+enum MessageType {MAVLINK, WIFION, WIFIOFF};
 
 public class Message implements Serializable {
     private static final long serialVersionUID = 124234678453620001L;
