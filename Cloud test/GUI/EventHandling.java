@@ -39,7 +39,7 @@ public class EventHandling {
     @FXML
     private TextField lngTextfield;
     @FXML
-    private CheckBox connectedCheckBox;
+    CheckBox connectedCheckBox;
     @FXML
     private Slider wifiSlider;
 
@@ -84,7 +84,7 @@ public class EventHandling {
         }
     }
 
-    private void setUpServer() {
+    void setUpServer() {
         System.out.println("setup server socket!");
         Task<Socket> task = new Task<Socket>() {
             @Override
@@ -98,8 +98,13 @@ public class EventHandling {
                     e.printStackTrace();
                 }
                 System.out.println("Connection accepted!");
-                Server serverTask = new Server(12345, EventHandling.this, clientSocket);
+                Server serverTask = new Server(EventHandling.this, clientSocket);
                 new Thread(serverTask).start();
+                try {
+                    serverSocket.close();
+                } catch (IOException e) {
+                    System.err.println("Closing server socket failed!");
+                }
                 return clientSocket;
             }
         };
@@ -175,9 +180,6 @@ public class EventHandling {
 
         msg.setByteArray(mavLinkByteArray);
         msg.setMessageType(MessageType.MAVLINK);
-
-        msg.setByteArray(mavLinkByteArray);
-        msg.setMessageType(MessageType.MAVLINK);
         try {
             objectOut.writeObject(msg);
         } catch (IOException e) {
@@ -206,9 +208,6 @@ public class EventHandling {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        msg.setByteArray(mavLinkByteArray);
-        msg.setMessageType(MessageType.MAVLINK);
 
         msg.setByteArray(mavLinkByteArray);
         msg.setMessageType(MessageType.MAVLINK);

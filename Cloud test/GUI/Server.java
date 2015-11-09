@@ -1,49 +1,65 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.Socket;
 
+import javafx.application.Platform;
 import javafx.concurrent.Task;
-import javafx.fxml.FXML;
-import javafx.scene.control.CheckBox;
 
 public class Server extends Task<Void> {
-    private int port;
     private Socket clientSocket;
-    @FXML
-    private CheckBox connectedCheckBox;
+    EventHandling handleGUI;
 
-    public Server(int port, EventHandling handleGUI, Socket clientSocket) {
-        this.port=port;
-        this.clientSocket=clientSocket;
+    public Server(EventHandling handleGUI, Socket clientSocket) {
+        this.clientSocket = clientSocket;
+        this.handleGUI = handleGUI;
     }
 
     @Override
-    protected Void call() throws Exception {
-        BufferedReader in = null;
+    protected Void call(){
 
         System.out.println("Receiving server thread running!");
-        try {
-            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        Message msg;
+        Object receivedObject = null;
+        String mavlinkMessageInfo;
 
-            String msg;
-            while (true) {
-                if ((msg = in.readLine()) != null) {
-                    System.out.println(msg);
-                }
-                else {
-                    return null;
-                }
-            }
+        ObjectInputStream ois = null;
+        try {
+            ois = new ObjectInputStream(clientSocket.getInputStream());
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            in.close();
-            clientSocket.close();
-            connectedCheckBox.setText("Drone not connected");//Does not really work
-            connectedCheckBox.setSelected(false);
-            System.out.println("Drone disconnected!");
         }
+
+        while(ois != null ) {
+            try {
+                receivedObject = ois.readObject();
+            } catch (IOException e) {
+                ois = null;
+                e.printStackTrace();
+                continue;
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+
+            if ((receivedObject != null) && (receivedObject instanceof Message)) {
+                msg = (Message) receivedObject;
+                mavlinkMessageInfo = DroneCommunication.mavlink_decode(msg.getByteArray());
+                System.out.println(mavlinkMessageInfo);
+            } else {
+                System.err.println("Incorrect object received. Check Massage.java version.");
+            }
+        }
+
+        System.out.println("Drone disconnected!");
+        try {
+            clientSocket.close();
+        } catch (IOException e) {
+            System.err.println("Closing socket failed!");
+        }
+        Platform.runLater(() -> {
+            handleGUI.connectedCheckBox.setText("Drone not connected");
+            handleGUI.connectedCheckBox.setSelected(false);
+        });
+        handleGUI.setUpServer(); // Restart everything
+
         return null;
     }
 }
