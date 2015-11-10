@@ -1,0 +1,10 @@
+autopilot - take off - hover - land.mp4
+	A video clip showing the drone taking off, hovering in mid-air for 30 seconds,
+	and finally landing using a preset autopilot mission loaded into the drone using the
+	APM planner software.
+	
+autopilot - take off - fly to preset location.mp4
+	A video clip showing the drone taking off and then flying to a preset way point
+	in the centre of the grass field using autopilot. The mission was preloaded into
+	the drone using the APM planner software. Note that due to the low altitude the
+	pilot takes control of the drone at the end of the clip to land manually.
