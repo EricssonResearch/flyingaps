@@ -31,6 +31,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Method;
 import java.net.Socket;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -43,12 +45,18 @@ public class MainActivity extends AppCompatActivity {
 
     boolean wifiState = false;
     private boolean scrollingEnabled = true;
-    private boolean stop = false;
+
+    private volatile boolean stop = false;
+    private volatile boolean isCloudConnected = false;
 
     D2xxManager d2xxManager = null;
     FT_Device ft_device = null;
 
     private final Object usbLock = new Object();
+    private Object cloudConnection = new Object();
+    private Object taskTermination = new Object();
+
+    BlockingQueue mailbox = new LinkedBlockingQueue(50);
 
     private static final String ACTION_USB_PERMISSION = "se.kth.mf2063.internetdrone.USB_PERMISSION";
 
@@ -88,8 +96,11 @@ public class MainActivity extends AppCompatActivity {
                     ft_device.purge(D2xxManager.FT_PURGE_TX);
                     ft_device.restartInTask();
 
+                    stop = false;
+
                     startDroneCommunicationTasks();
-                    CloudRxTask cloudRxTask = new CloudRxTask(mainHandler);
+                    startCloudCommunicationTask();
+
                 }
             }
         });
@@ -144,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
                     "Number of Devices: " + Integer.toString(devCount));
 
 
-            if ( null != deviceList[0].serialNumber ) {
+            if (null != deviceList[0].serialNumber) {
                 infoTxtVw.setText(infoTxtVw.getText() + "\n" +
                         "Device SerialNumber: " + deviceList[0].serialNumber);
             }
@@ -210,7 +221,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void startDroneCommunicationTasks(){
+    private void startCloudCommunicationTask() {
+        /* TODO: Change the following ip to a convenient one or to a domain name */
+        CloudCommunicationTask cloudCommunicationTask = new CloudCommunicationTask("130.229.152.16", 12345);
+        cloudCommunicationTask.start();
+    }
+
+    private void startDroneCommunicationTasks() {
         stop = false;
         DroneRxTask droneRxTask = new DroneRxTask(mainHandler);
         droneRxTask.start();
@@ -243,6 +260,149 @@ public class MainActivity extends AppCompatActivity {
 
     };
 
+    /*
+    *
+    * Cloud Communication Main Task
+    *
+    */
+    class CloudCommunicationTask extends Thread {
+        Socket cloudClient;
+        String host;
+        int port;
+
+        CloudCommunicationTask(String host, int port) {
+            this.host = host;
+            this.port = port;
+        }
+
+        @Override
+        public void run() {
+            ObjectOutputStream objectOutputStream = null;
+            ObjectInputStream objectInputStream = null;
+
+            while (true != stop) {
+
+                /* Connecting Phase */
+                do {
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+
+                    }
+
+                    try {
+                        cloudClient = new Socket(host, port);
+                        if (null != cloudClient) {
+                            isCloudConnected = true;
+                        }
+                    } catch (IOException e) {
+                        isCloudConnected = false;
+                    }
+                } while ((true != stop) && (true != isCloudConnected));
+
+                try {
+                    objectOutputStream = new ObjectOutputStream(cloudClient.getOutputStream());
+                } catch (IOException e) {
+                    isCloudConnected = false;
+                }
+
+                try {
+                    objectInputStream = new ObjectInputStream(cloudClient.getInputStream());
+                } catch (IOException e) {
+                    isCloudConnected = false;
+                }
+
+                CloudTxTask cloudTxTask = null;
+                CloudRxTask cloudRxTask = null;
+
+                if ((true == isCloudConnected) && (null != cloudClient)) {
+                    cloudTxTask = new CloudTxTask(mainHandler, mailbox, objectOutputStream);
+                    cloudRxTask = new CloudRxTask(mainHandler, objectInputStream);
+                    cloudTxTask.start();
+                    cloudRxTask.start();
+                } else {
+                    continue;
+                }
+
+                synchronized (taskTermination) {
+                    try {
+                        taskTermination.wait();
+                    } catch (InterruptedException e) {
+                    }
+                }
+
+                cloudTxTask.interrupt();
+                cloudRxTask.interrupt();
+
+                synchronized (taskTermination) {
+                    try {
+                        taskTermination.wait();
+                    } catch (InterruptedException e) {
+                    }
+                }
+
+                try {
+                    cloudClient.close();
+                } catch (IOException e) {
+                }
+
+                isCloudConnected = false;
+
+                synchronized (cloudConnection) {
+                    cloudConnection.notifyAll();
+                }
+            }
+        }
+    }
+
+    /*
+    *
+    * Cloud Communication Transmission Task
+    *
+    */
+    class CloudTxTask extends Thread {
+        private final Handler handler;
+        private final BlockingQueue mailbox;
+        private final ObjectOutputStream objectOutputStream;
+
+        CloudTxTask(Handler handler, BlockingQueue mailbox,
+                    ObjectOutputStream objectOutputStream) {
+            this.handler = handler;
+            this.setPriority(Thread.MIN_PRIORITY);
+            this.mailbox = mailbox;
+            this.objectOutputStream = objectOutputStream;
+        }
+
+        @Override
+        public void run() {
+            byte[] mavlinkBuffer = null;
+            se.kth.mf2063.internetdrone.Message cloudMessage = new se.kth.mf2063.internetdrone.Message();
+
+            while (true == isCloudConnected) {
+                try {
+                    mavlinkBuffer = (byte[]) mailbox.take();
+                    cloudMessage.setMessageType(MessageType.MAVLINK);
+                    cloudMessage.setByteArray(mavlinkBuffer);
+                    objectOutputStream.writeObject(cloudMessage);
+                } catch (InterruptedException e) {
+
+                } catch (IOException e) {
+                    isCloudConnected = false;
+                }
+            }
+
+            synchronized (taskTermination) {
+                taskTermination.notify();
+            }
+
+            synchronized (cloudConnection) {
+                try {
+                    cloudConnection.wait();
+                } catch (InterruptedException e) {
+                }
+            }
+        }
+    }
 
     /*
     *
@@ -250,96 +410,68 @@ public class MainActivity extends AppCompatActivity {
     *
     */
     class CloudRxTask extends Thread {
-        Handler handler;
+        private final Handler handler;
+        private final ObjectInputStream objectInputStream;
 
-        CloudRxTask(Handler h) {
+        CloudRxTask(Handler h, ObjectInputStream objectInputStream) {
             handler = h;
             this.setPriority(Thread.NORM_PRIORITY);
+            this.objectInputStream = objectInputStream;
         }
 
         @Override
         public void run() {
-            boolean isCloudConnected = false;
             Socket cloudClient = null; // connect to the server
             Object message = null;
             se.kth.mf2063.internetdrone.Message cloudMessage = null;
-            ObjectInputStream inputStream = null;
-            ObjectOutputStream outputStream = null;
 
-            while ( stop != true) {
-
-                do {
-
-                    try {
-                        Thread.sleep(3000);
-                    } catch (InterruptedException e) {
-
-                    }
-
-                    try {
-                        /* TODO: Change the following ip to a convenient one or to a domain name */
-                        cloudClient = new Socket("130.229.172.179", 12345);
-                        if (null != cloudClient) {
-                            isCloudConnected = true;
-                        }
-                    } catch (IOException e) {
-                        isCloudConnected = false;
-                    }
-                } while (true != isCloudConnected);
-
-                inputStream = null;
-                outputStream = null;
+            while (true == isCloudConnected) {
 
                 try {
-                    outputStream = new ObjectOutputStream(cloudClient.getOutputStream());
+                    message = objectInputStream.readObject();
+                } catch (ClassNotFoundException e) {
+                    continue;
                 } catch (IOException e) {
                     isCloudConnected = false;
+                    continue;
                 }
 
-                try {
-                    inputStream = new ObjectInputStream(cloudClient.getInputStream());
-                } catch (IOException e) {
-                    isCloudConnected = false;
-                }
+                if ((null != message) && (message instanceof se.kth.mf2063.internetdrone.Message)) {
+                    cloudMessage = (se.kth.mf2063.internetdrone.Message) message;
 
-                message = null;
-                cloudMessage = null;
-
-                if (null != inputStream) {
-                    try {
-                        message = inputStream.readObject();
-                    } catch (ClassNotFoundException e) {
-                    } catch (IOException e) {
-                        isCloudConnected = false;
-                        message = null;
-                    }
-
-                    if ((null != message) && (message instanceof se.kth.mf2063.internetdrone.Message)) {
-                        cloudMessage = (se.kth.mf2063.internetdrone.Message) message;
-
-                        switch (cloudMessage.getMessageType()) {
-                            case MAVLINK:
-                            /* send message to Drone */
-                                synchronized (usbLock) {
-                                    if ((null != ft_device) && (ft_device.isOpen())) {
-                                        ft_device.write(cloudMessage.getByteArray(), cloudMessage.getByteArray().length);
-                                        ft_device.purge(D2xxManager.FT_PURGE_TX);
-                                    } else {
-                                    /* Drone is not connected */
-                                    /* dropp message for now */
-                                    }
+                    switch (cloudMessage.getMessageType()) {
+                        case MAVLINK:
+                        /* send message to Drone */
+                            synchronized (usbLock) {
+                                if ((null != ft_device) && (ft_device.isOpen())) {
+                                    ft_device.write(cloudMessage.getByteArray(), cloudMessage.getByteArray().length);
+                                    ft_device.purge(D2xxManager.FT_PURGE_TX);
+                                } else {
+                                /* Drone is not connected */
+                                /* drop message for now */
                                 }
-                                break;
-                            case WIFIOFF:
-                                disableTethering();
-                                break;
-                            case WIFION:
-                                enableTethering();
-                                break;
-                            default:
-                                break;
-                        }
+                            }
+                            break;
+                        case WIFIOFF:
+                            disableTethering();
+                            break;
+                        case WIFION:
+                            enableTethering();
+                            break;
+                        default:
+                            break;
                     }
+                }
+            }
+
+            synchronized (taskTermination) {
+                taskTermination.notify();
+            }
+
+            synchronized (cloudConnection) {
+                try {
+                    cloudConnection.wait();
+                } catch (InterruptedException e) {
                 }
             }
         }
@@ -351,7 +483,7 @@ public class MainActivity extends AppCompatActivity {
     *
     */
     class DroneTxTask extends Thread {
-        Handler handler;
+        private final Handler handler;
 
         DroneTxTask(Handler h) {
             handler = h;
@@ -400,18 +532,17 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     heartBeatMessageBytes = heartBeatMessage.encode();
                 } catch (IOException e) {
-
+                    continue;
                 }
 
-                //synchronized (ft_device) {
                 synchronized (usbLock) {
-                    if ( (null != ft_device) &&  (ft_device.isOpen()) ) {
-                        bytesWritten = ft_device.write(heartBeatMessageBytes,heartBeatMessageBytes.length);
+                    if ((null != ft_device) && (ft_device.isOpen())) {
+                        bytesWritten = ft_device.write(heartBeatMessageBytes, heartBeatMessageBytes.length);
                         ft_device.purge(D2xxManager.FT_PURGE_TX);
                     }
                 }
 
-                if( bytesWritten > 0 ) {
+                if (bytesWritten > 0) {
                     msg = new Message();
                     data = new Bundle();
                     data.putString("msg", /*System.nanoTime()+*/"Tx HB #" + heartBeatMessage.sequence + "");
@@ -429,7 +560,7 @@ public class MainActivity extends AppCompatActivity {
     */
     class DroneRxTask extends Thread {
 
-        Handler handler;
+        private final Handler handler;
 
         DroneRxTask(Handler h) {
             handler = h;
@@ -460,10 +591,9 @@ public class MainActivity extends AppCompatActivity {
 
                 }
 
-                //synchronized(ft_device) {
-                synchronized(usbLock) {
+                synchronized (usbLock) {
 
-                    if ( (null != ft_device) &&  (ft_device.isOpen()) ) {
+                    if ((null != ft_device) && (ft_device.isOpen())) {
                         numberOfWaitingBytes = ft_device.getQueueStatus();
                         if (numberOfWaitingBytes > 0) {
                             rxBuffer = new byte[numberOfWaitingBytes];
@@ -478,12 +608,12 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                if(numberOfRxBytes > 0) {
+                if (numberOfRxBytes > 0) {
                     // Mavlink Decode
                     String mavlinkMessageInfo = DroneCommunication.mavlink_decode(rxBuffer);
                     msg = new Message();
                     data = new Bundle();
-                    data.putString("msg",mavlinkMessageInfo);
+                    data.putString("msg", mavlinkMessageInfo);
                     msg.setData(data);
                     handler.sendMessage(msg);
                 }
@@ -503,28 +633,35 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /* USB disconnect broadcast receiver */
-    private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver()
-    {
+    private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
         @Override
-        public void onReceive(Context context, Intent intent)
-        {
+        public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
 
-            if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action))
-            {
+            if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
                 /* Start Drone Tasks automatically */
-                // startDroneCommunicationTasks();
+                if (connectSerialUsb()) {
+
+                    ft_device.purge(D2xxManager.FT_PURGE_TX);
+                    ft_device.restartInTask();
+
+                    stop = false;
+
+                    startDroneCommunicationTasks();
+                    startCloudCommunicationTask();
+                }
             }
 
-            if(UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action))
-            {
+            if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
                 synchronized (usbLock) {
-                    if(ft_device !=null) {
+                    if (ft_device != null) {
                         ft_device.close();
                         ft_device = null;
+                        /* handle cloud termination properly */
+                        isCloudConnected = false;
+                        /* stop all tasks */
                         stop = true;
                     }
-
                 }
             }
         }
