@@ -7,10 +7,10 @@ import android.content.IntentFilter;
 import android.graphics.Color;
 import android.hardware.usb.UsbManager;
 import android.net.wifi.WifiManager;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -280,7 +280,7 @@ public class MainActivity extends AppCompatActivity {
             ObjectOutputStream objectOutputStream = null;
             ObjectInputStream objectInputStream = null;
 
-            while (true != stop) {
+            while (!stop) {
 
                 /* Connecting Phase */
                 do {
@@ -298,7 +298,7 @@ public class MainActivity extends AppCompatActivity {
                     } catch (IOException e) {
                         isCloudConnected = false;
                     }
-                } while ((true != stop) && (true != isCloudConnected));
+                } while ((!stop) && (!isCloudConnected));
 
                 try {
                     objectOutputStream = new ObjectOutputStream(cloudClient.getOutputStream());
@@ -515,7 +515,7 @@ public class MainActivity extends AppCompatActivity {
             heartBeatMessage.system_status = MAV_STATE.MAV_STATE_STANDBY;
             heartBeatMessage.mavlink_version = 3;
 
-            while (true != stop) {
+            while (!stop) {
 
                 bytesWritten = 0;
 
@@ -573,15 +573,15 @@ public class MainActivity extends AppCompatActivity {
 
             Message msg = new Message();
             Bundle data = new Bundle();
-            int numberOfWaitingBytes = 0;
-            int numberOfRxBytes = 0;
+            int numberOfWaitingBytes;
+            int numberOfRxBytes;
 
             data.putString("msg", "Rx Thread Started");
             msg.setData(data);
             handler.sendMessage(msg);
 
 
-            while (true != stop) {
+            while (!stop) {
 
                 numberOfRxBytes = 0;
 
@@ -609,13 +609,18 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 if (numberOfRxBytes > 0) {
-                    // Mavlink Decode
+                    /* Mavlink Decode */
                     String mavlinkMessageInfo = DroneCommunication.mavlink_decode(rxBuffer);
                     msg = new Message();
                     data = new Bundle();
                     data.putString("msg", mavlinkMessageInfo);
                     msg.setData(data);
                     handler.sendMessage(msg);
+                    /* Send Buffer to the cloud */
+                    try {
+                        mailbox.put(rxBuffer);
+                    } catch (InterruptedException e) {
+                    }
                 }
             }
         }
