@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
@@ -102,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
                     startCloudCommunicationTask();
 
                 }
+
             }
         });
 
@@ -130,14 +130,14 @@ public class MainActivity extends AppCompatActivity {
     private boolean connectSerialUsb() {
 
         D2xxManager.DriverParameters driverParameters = new D2xxManager.DriverParameters();
-        Log.d("D2xxManager", "MaxBufferSize= " + driverParameters.getMaxBufferSize());
-        Log.d("D2xxManager", "MaxTransferSize= " + driverParameters.getMaxTransferSize());
-        Log.d("D2xxManager", "ReadTimeout= " + driverParameters.getReadTimeout());
+        UiLog("D2xxManager: MaxBufferSize= " + driverParameters.getMaxBufferSize());
+        UiLog("D2xxManager: MaxTransferSize= " + driverParameters.getMaxTransferSize());
+        UiLog("D2xxManager: ReadTimeout= " + driverParameters.getReadTimeout());
 
         try {
             d2xxManager = D2xxManager.getInstance(this);
         } catch (D2xxManager.D2xxException ex) {
-            infoTxtVw.setText(infoTxtVw.getText() + "\n" + "Could not get d2xxManager");
+            UiLog("Could not get d2xxManager");
             return false;
         }
 
@@ -149,15 +149,10 @@ public class MainActivity extends AppCompatActivity {
             D2xxManager.FtDeviceInfoListNode[] deviceList = new D2xxManager.FtDeviceInfoListNode[devCount];
             d2xxManager.getDeviceInfoList(devCount, deviceList);
 
-            // deviceList[0] = ftdid2xx.getDeviceInfoListDetail(0);
-
-            infoTxtVw.setText(infoTxtVw.getText() + "\n" +
-                    "Number of Devices: " + Integer.toString(devCount));
-
+            UiLog("Number of Devices: " + Integer.toString(devCount));
 
             if (null != deviceList[0].serialNumber) {
-                infoTxtVw.setText(infoTxtVw.getText() + "\n" +
-                        "Device SerialNumber: " + deviceList[0].serialNumber);
+                UiLog("Device SerialNumber: " + deviceList[0].serialNumber);
             }
         }
 
@@ -223,15 +218,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void startCloudCommunicationTask() {
         /* TODO: Change the following ip to a convenient one or to a domain name */
-        CloudCommunicationTask cloudCommunicationTask = new CloudCommunicationTask("130.229.152.16", 12345);
+        CloudCommunicationTask cloudCommunicationTask = new CloudCommunicationTask("172.20.10.3", 9999);
         cloudCommunicationTask.start();
     }
 
     private void startDroneCommunicationTasks() {
-        stop = false;
-        DroneRxTask droneRxTask = new DroneRxTask(mainHandler);
+        DroneRxTask droneRxTask = new DroneRxTask();
         droneRxTask.start();
-        DroneTxTask droneTxTask = new DroneTxTask(mainHandler);
+        DroneTxTask droneTxTask = new DroneTxTask();
         droneTxTask.start();
     }
 
@@ -254,11 +248,19 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
             }
-
-            Log.d("Handler", rxData);
         }
 
     };
+
+    private void UiLog(String message) {
+        Message msg;
+        Bundle data;
+        msg = new Message();
+        data = new Bundle();
+        msg.setData(data);
+        data.putString("msg", message);
+        mainHandler.sendMessage(msg);
+    }
 
     /*
     *
@@ -280,25 +282,30 @@ public class MainActivity extends AppCompatActivity {
             ObjectOutputStream objectOutputStream = null;
             ObjectInputStream objectInputStream = null;
 
+
             while (!stop) {
 
                 /* Connecting Phase */
                 do {
                     try {
-                        Thread.sleep(2000);
-                    } catch (InterruptedException e) {
-
+                        cloudClient = new Socket(host, port);
+                        if (null != cloudClient) {
+                            UiLog("CloudCommunicationTask: " + "connected");
+                            isCloudConnected = true;
+                            break;
+                        }
+                    } catch (IOException e) {
+                        UiLog("CloudCommunicationTask: " + e.getMessage());
+                        isCloudConnected = false;
                     }
 
                     try {
-                        cloudClient = new Socket(host, port);
-                        if (null != cloudClient) {
-                            isCloudConnected = true;
-                        }
-                    } catch (IOException e) {
-                        isCloudConnected = false;
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
                     }
                 } while ((!stop) && (!isCloudConnected));
+
+                UiLog("CloudCommunicationTask: " + isCloudConnected);
 
                 try {
                     objectOutputStream = new ObjectOutputStream(cloudClient.getOutputStream());
@@ -315,9 +322,10 @@ public class MainActivity extends AppCompatActivity {
                 CloudTxTask cloudTxTask = null;
                 CloudRxTask cloudRxTask = null;
 
-                if ((true == isCloudConnected) && (null != cloudClient)) {
-                    cloudTxTask = new CloudTxTask(mainHandler, mailbox, objectOutputStream);
-                    cloudRxTask = new CloudRxTask(mainHandler, objectInputStream);
+
+                if ((isCloudConnected) && (null != cloudClient)) {
+                    cloudTxTask = new CloudTxTask(objectOutputStream);
+                    cloudRxTask = new CloudRxTask(objectInputStream);
                     cloudTxTask.start();
                     cloudRxTask.start();
                 } else {
@@ -361,32 +369,29 @@ public class MainActivity extends AppCompatActivity {
     *
     */
     class CloudTxTask extends Thread {
-        private final Handler handler;
-        private final BlockingQueue mailbox;
         private final ObjectOutputStream objectOutputStream;
 
-        CloudTxTask(Handler handler, BlockingQueue mailbox,
-                    ObjectOutputStream objectOutputStream) {
-            this.handler = handler;
+        CloudTxTask(ObjectOutputStream objectOutputStream) {
             this.setPriority(Thread.MIN_PRIORITY);
-            this.mailbox = mailbox;
             this.objectOutputStream = objectOutputStream;
         }
 
         @Override
         public void run() {
             byte[] mavlinkBuffer = null;
-            se.kth.mf2063.internetdrone.Message cloudMessage = new se.kth.mf2063.internetdrone.Message();
+            se.kth.mf2063.internetdrone.Message cloudMessage = null;
 
-            while (true == isCloudConnected) {
+            while (isCloudConnected) {
                 try {
                     mavlinkBuffer = (byte[]) mailbox.take();
+                    cloudMessage = new se.kth.mf2063.internetdrone.Message();
                     cloudMessage.setMessageType(MessageType.MAVLINK);
                     cloudMessage.setByteArray(mavlinkBuffer);
                     objectOutputStream.writeObject(cloudMessage);
                 } catch (InterruptedException e) {
-
+                    mavlinkBuffer = null;
                 } catch (IOException e) {
+                    mavlinkBuffer = null;
                     isCloudConnected = false;
                 }
             }
@@ -410,11 +415,9 @@ public class MainActivity extends AppCompatActivity {
     *
     */
     class CloudRxTask extends Thread {
-        private final Handler handler;
         private final ObjectInputStream objectInputStream;
 
-        CloudRxTask(Handler h, ObjectInputStream objectInputStream) {
-            handler = h;
+        CloudRxTask(ObjectInputStream objectInputStream) {
             this.setPriority(Thread.NORM_PRIORITY);
             this.objectInputStream = objectInputStream;
         }
@@ -425,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
             Object message = null;
             se.kth.mf2063.internetdrone.Message cloudMessage = null;
 
-            while (true == isCloudConnected) {
+            while (isCloudConnected) {
 
                 try {
                     message = objectInputStream.readObject();
@@ -438,6 +441,8 @@ public class MainActivity extends AppCompatActivity {
 
                 if ((null != message) && (message instanceof se.kth.mf2063.internetdrone.Message)) {
                     cloudMessage = (se.kth.mf2063.internetdrone.Message) message;
+
+                    UiLog("Cloud Msg: " + cloudMessage.getMessageType());
 
                     switch (cloudMessage.getMessageType()) {
                         case MAVLINK:
@@ -483,10 +488,8 @@ public class MainActivity extends AppCompatActivity {
     *
     */
     class DroneTxTask extends Thread {
-        private final Handler handler;
 
-        DroneTxTask(Handler h) {
-            handler = h;
+        DroneTxTask() {
             this.setPriority(Thread.NORM_PRIORITY);
         }
 
@@ -495,11 +498,7 @@ public class MainActivity extends AppCompatActivity {
 
             int bytesWritten = 0;
 
-            Message msg = new Message();
-            Bundle data = new Bundle();
-            data.putString("msg", "Tx Thread Started");
-            msg.setData(data);
-            handler.sendMessage(msg);
+            UiLog("Tx Thread Started");
 
             /* Transmitter system id and component id */
             /* 100 has been picked up for the android app */
@@ -507,15 +506,20 @@ public class MainActivity extends AppCompatActivity {
             int componentId = 100;
             byte[] heartBeatMessageBytes = null;
 
-            /* HeartBeat parameters */
-            msg_heartbeat heartBeatMessage = new msg_heartbeat(sysId, componentId);
-            heartBeatMessage.type = MAV_TYPE.MAV_TYPE_QUADROTOR;
-            heartBeatMessage.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_ARDUPILOTMEGA;
-            heartBeatMessage.base_mode = MAV_MODE_FLAG.MAV_MODE_FLAG_STABILIZE_ENABLED;
-            heartBeatMessage.system_status = MAV_STATE.MAV_STATE_STANDBY;
-            heartBeatMessage.mavlink_version = 3;
+            int count = 0;
+
+            msg_heartbeat heartBeatMessage = null;
+
 
             while (!stop) {
+                /* HeartBeat parameters */
+                heartBeatMessage = new msg_heartbeat(sysId, componentId);
+                heartBeatMessage.type = MAV_TYPE.MAV_TYPE_QUADROTOR;
+                heartBeatMessage.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_ARDUPILOTMEGA;
+                heartBeatMessage.base_mode = MAV_MODE_FLAG.MAV_MODE_FLAG_STABILIZE_ENABLED;
+                heartBeatMessage.system_status = MAV_STATE.MAV_STATE_STANDBY;
+                heartBeatMessage.mavlink_version = 3;
+                heartBeatMessage.sequence = count;
 
                 bytesWritten = 0;
 
@@ -525,15 +529,15 @@ public class MainActivity extends AppCompatActivity {
 
                 }
 
-                /*  Sequence wrap around 255  */
-                heartBeatMessage.sequence++;
-                heartBeatMessage.sequence = heartBeatMessage.sequence % 255;
-
                 try {
                     heartBeatMessageBytes = heartBeatMessage.encode();
                 } catch (IOException e) {
                     continue;
                 }
+
+                /*  Sequence wrap around 255  */
+                count++;
+                count = count % 255;
 
                 synchronized (usbLock) {
                     if ((null != ft_device) && (ft_device.isOpen())) {
@@ -543,11 +547,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 if (bytesWritten > 0) {
-                    msg = new Message();
-                    data = new Bundle();
-                    data.putString("msg", /*System.nanoTime()+*/"Tx HB #" + heartBeatMessage.sequence + "");
-                    msg.setData(data);
-                    handler.sendMessage(msg);
+                    UiLog(/*System.nanoTime()+*/"Tx HB #" + heartBeatMessage.sequence + "");
                 }
             }
         }
@@ -560,26 +560,20 @@ public class MainActivity extends AppCompatActivity {
     */
     class DroneRxTask extends Thread {
 
-        private final Handler handler;
-
-        DroneRxTask(Handler h) {
-            handler = h;
+        DroneRxTask() {
             this.setPriority(Thread.MIN_PRIORITY);
         }
+
+        /* TODO: investigate why cloud stop drone rx stop */
 
         @Override
         public void run() {
             byte[] rxBuffer = null;
 
-            Message msg = new Message();
-            Bundle data = new Bundle();
             int numberOfWaitingBytes;
             int numberOfRxBytes;
 
-            data.putString("msg", "Rx Thread Started");
-            msg.setData(data);
-            handler.sendMessage(msg);
-
+            UiLog("Rx Thread Started");
 
             while (!stop) {
 
@@ -600,22 +594,14 @@ public class MainActivity extends AppCompatActivity {
                             numberOfRxBytes = ft_device.read(rxBuffer, numberOfWaitingBytes);
                         }
                     } else {
-                        msg = new Message();
-                        data = new Bundle();
-                        data.putString("msg", "Not connected");
-                        msg.setData(data);
-                        handler.sendMessage(msg);
+                        UiLog("Not connected");
                     }
                 }
 
                 if (numberOfRxBytes > 0) {
                     /* Mavlink Decode */
                     String mavlinkMessageInfo = DroneCommunication.mavlink_decode(rxBuffer);
-                    msg = new Message();
-                    data = new Bundle();
-                    data.putString("msg", mavlinkMessageInfo);
-                    msg.setData(data);
-                    handler.sendMessage(msg);
+                    UiLog(mavlinkMessageInfo);
                     /* Send Buffer to the cloud */
                     try {
                         mailbox.put(rxBuffer);
@@ -663,9 +649,11 @@ public class MainActivity extends AppCompatActivity {
                         ft_device.close();
                         ft_device = null;
                         /* handle cloud termination properly */
+                        /* TODO: handle that */
                         isCloudConnected = false;
                         /* stop all tasks */
                         stop = true;
+                        /* TODO: wake up tasks which are sleeping */
                     }
                 }
             }
