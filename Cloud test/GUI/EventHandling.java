@@ -1,3 +1,4 @@
+
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -7,8 +8,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import netscape.javascript.JSObject;
-import org.mavlink.messages.ja4rtor.msg_command_long;
-import org.mavlink.messages.ja4rtor.msg_mission_item;
+import org.mavlink.messages.ja4rtor.*;
+import se.kth.mf2063.internetdrone.Message;
+import se.kth.mf2063.internetdrone.MessageType;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -17,14 +19,16 @@ import java.net.Socket;
 
 
 public class EventHandling {
-    int sysId = 0;
-    int componentId = 0;
+    int sysId = 255;
+    int componentId = 190;
+    //int sysId = 100;
+    //int componentId = 100;
     private Socket clientSocket;
     private int port = 12345;
     private WebEngine engine;
     ObjectOutputStream objectOut;
-    Message msg;
-    byte[] mavLinkByteArray = null;
+    private double wifiStatus = 0;
+    private int missionNumber=0;
 
     @FXML
     private Button missionButton;
@@ -42,6 +46,13 @@ public class EventHandling {
     CheckBox connectedCheckBox;
     @FXML
     private Slider wifiSlider;
+    @FXML
+    private Button armButton;
+    @FXML
+    private Button statusButton;
+    @FXML
+    private Button rcButton;
+
 
     public EventHandling() {
         System.out.println("Gui created!");
@@ -64,8 +75,20 @@ public class EventHandling {
             land();
         });
 
-        wifiSlider.setOnDragDone((event) -> {
-             wifi(wifiSlider.getValue());
+        rcButton.setOnAction((event) -> {
+            rc();
+        });
+
+        statusButton.setOnAction((event) -> {
+            status();
+        });
+
+        armButton.setOnAction((event) -> {
+            arm();
+        });
+
+        wifiSlider.setOnMouseReleased((event) -> {
+            wifi(wifiSlider.getValue());
         });
 
         engine = webView.getEngine();
@@ -84,7 +107,7 @@ public class EventHandling {
         }
     }
 
-    void setUpServer() {
+    void setUpServer() {//Only allow one connection
         System.out.println("setup server socket!");
         Task<Socket> task = new Task<Socket>() {
             @Override
@@ -119,23 +142,20 @@ public class EventHandling {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            msg = new Message();
         });
     }
 
     private void flyTo() {
+        byte[] mavLinkByteArray = null;
+
         msg_mission_item mi = new msg_mission_item(sysId, componentId);
-        mi.target_system = sysId;
-        mi.target_component = componentId;
-        mi.seq = 1;
+        mi.target_system = 1;
+        mi.target_component = 1;
+        mi.seq = missionNumber;
         mi.frame = 0;
         mi.command = 17;
-        mi.current = 0; //No idea what this is
-        mi.autocontinue = 1; //Autocontinue, but there wont be anymore until the next command is sent?
-        mi.param1 = 0;
-        mi.param2 = 0;
-        mi.param3 = 0;
-        mi.param4 = 0;
+        mi.current = 0;
+        mi.autocontinue = 0;
         mi.x = Float.parseFloat(latTextfield.getText());
         mi.y = Float.parseFloat(lngTextfield.getText());
         mi.z = 0;
@@ -146,30 +166,45 @@ public class EventHandling {
             e.printStackTrace();
         }
 
-        msg.setByteArray(mavLinkByteArray);
-        msg.setMessageType(MessageType.MAVLINK);
+        send(MessageType.MAVLINK, mavLinkByteArray);
+        executeMission();
+    }
+    private void rc() {
+        byte[] mavLinkByteArray = null;
+
+        msg_rc_channels_override rc = new msg_rc_channels_override(sysId, componentId);
+        rc.target_system = 1;
+        rc.target_component = 1;
+        rc.chan1_raw = 1000;
+        rc.chan2_raw = 1000;
+        rc.chan3_raw = 1000;
+        rc.chan4_raw = 1000;
+        rc.chan5_raw = 1000;
+        rc.chan6_raw = 1000;
+        rc.chan7_raw = 1000;
+        rc.chan8_raw = 1000;
 
         try {
-            objectOut.writeObject(msg);
+            mavLinkByteArray = rc.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
     }
     private void lift() {
+        byte[] mavLinkByteArray = null;
+
         msg_mission_item mi = new msg_mission_item(sysId, componentId);
-        mi.target_system = sysId;
-        mi.target_component = componentId;
-        mi.seq = 1;
+        mi.target_system = 1;
+        mi.target_component = 1;
+        mi.seq = missionNumber;
         mi.frame = 1;
         mi.command = 22;
-        mi.current = 0; //No idea what this is
-        mi.autocontinue = 1; //Autocontinue, but there wont be anymore until the next command is sent?
-        mi.param1 = 0;
-        mi.param2 = 0;
-        mi.param3 = 0;
-        mi.param4 = 0;
-        mi.x = Float.parseFloat(latTextfield.getText());
-        mi.y = Float.parseFloat(lngTextfield.getText());
+        mi.current = 0;
+        mi.autocontinue = 0;
+        mi.x = 0;
+        mi.y = 0;
         mi.z = 0;
 
         try {
@@ -178,29 +213,22 @@ public class EventHandling {
             e.printStackTrace();
         }
 
-        msg.setByteArray(mavLinkByteArray);
-        msg.setMessageType(MessageType.MAVLINK);
-        try {
-            objectOut.writeObject(msg);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        send(MessageType.MAVLINK, mavLinkByteArray);
+        executeMission();
     }
     private void land() {
+        byte[] mavLinkByteArray = null;
+
         msg_mission_item mi = new msg_mission_item(sysId, componentId);
-        mi.target_system = sysId;
-        mi.target_component = componentId;
-        mi.seq = 1;
+        mi.target_system = 1;
+        mi.target_component = 1;
+        mi.seq = missionNumber;
         mi.frame = 1;
         mi.command = 21;
-        mi.current = 0; //No idea what this is
-        mi.autocontinue = 1; //Autocontinue, but there wont be anymore until the next command is sent?
-        mi.param1 = 0;
-        mi.param2 = 0;
-        mi.param3 = 0;
-        mi.param4 = 0;
-        mi.x = Float.parseFloat(latTextfield.getText());
-        mi.y = Float.parseFloat(lngTextfield.getText());
+        mi.current = 0;
+        mi.autocontinue = 0;
+        mi.x = 0;
+        mi.y = 0;
         mi.z = 0;
 
         try {
@@ -209,23 +237,87 @@ public class EventHandling {
             e.printStackTrace();
         }
 
-        msg.setByteArray(mavLinkByteArray);
-        msg.setMessageType(MessageType.MAVLINK);
+        send(MessageType.MAVLINK, mavLinkByteArray);
+        executeMission();
+    }
+    private void status() {
+        byte[] mavLinkByteArray = null;
+        /*msg_param_request_list mprl = new msg_param_request_list(sysId, componentId);
+        mprl.target_system = 1;
+        mprl.target_component = 1;*/
+
+        msg_command_long cl = new msg_command_long(sysId, componentId);
+        cl.target_system = 1;
+        cl.target_component = 1;
+        cl.command = 511;
+        cl.param1 = 147;
+        cl.param2 = 0;
+
         try {
-            objectOut.writeObject(msg);
+            mavLinkByteArray = cl.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
     }
+
+    private void arm() {
+        byte[] mavLinkByteArray = null;
+        msg_command_long cl = new msg_command_long(sysId, componentId);
+        cl.target_system = 1;
+        cl.target_component = 1;
+        cl.command = 400; //MAV_CMD_COMPONENT_ARM_DISARM
+        cl.param1 = 1;
+        cl.confirmation = 0; //Is this gonna work...? Maybe not even needed
+
+        try {
+            mavLinkByteArray = cl.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+    }
+
     private void wifi(double status) {
-        msg.setByteArray(null);
+        if(wifiStatus == status)
+            return;
+
+        wifiStatus=status;
 
         if(status == 0) {
-            msg.setMessageType(MessageType.WIFIOFF);
+            send(MessageType.WIFIOFF, null);
         }
         else {
-            msg.setMessageType(MessageType.WIFION);
+            send(MessageType.WIFION, null);
         }
+    }
+
+    private void executeMission() {
+        byte[] mavLinkByteArray = null;
+        msg_command_long cl = new msg_command_long(sysId, componentId);
+        cl.target_system = 1;
+        cl.target_component = 1;
+        cl.command = 300; //supposed to be MAV_CMD_MISSION_START, but the ENUM does not seem to work for me
+        cl.confirmation = 0;
+        cl.param1=missionNumber;
+        cl.param2=missionNumber;
+        missionNumber++;
+
+        try {
+            mavLinkByteArray = cl.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+    }
+
+    private void send(MessageType messageType, byte[] mavLinkByteArray) {
+        Message msg = new Message();
+        msg.setByteArray(mavLinkByteArray);
+        msg.setMessageType(messageType);
 
         try {
             objectOut.writeObject(msg);
@@ -234,5 +326,4 @@ public class EventHandling {
         }
     }
 
-    msg_command_long cl = new msg_command_long();//testing in progress
 }

@@ -1,8 +1,10 @@
+
 import java.io.*;
 import java.net.Socket;
 
 import javafx.application.Platform;
 import javafx.concurrent.Task;
+import se.kth.mf2063.internetdrone.Message;
 
 public class Server extends Task<Void> {
     private Socket clientSocket;
@@ -33,18 +35,31 @@ public class Server extends Task<Void> {
                 receivedObject = ois.readObject();
             } catch (IOException e) {
                 ois = null;
-                e.printStackTrace();
                 continue;
             } catch (ClassNotFoundException e) {
-                e.printStackTrace();
+                ois = null;
+                continue;
             }
 
             if ((receivedObject != null) && (receivedObject instanceof Message)) {
                 msg = (Message) receivedObject;
+
+                //Print raw data
+                /*StringBuilder sb = new StringBuilder();
+                sb.append("numberOfRxBytes: " + msg.getByteArray().length + "\n");
+                for (byte b : msg.getByteArray()) {
+                    sb.append(String.format("%02x", b));
+                }
+                sb.append("\n");
+
+                System.out.println(sb.toString());
+*/
                 mavlinkMessageInfo = DroneCommunication.mavlink_decode(msg.getByteArray());
-                System.out.println(mavlinkMessageInfo);
+
+                if(mavlinkMessageInfo.length() != 0)
+                    System.out.println(mavlinkMessageInfo);
             } else {
-                System.err.println("Incorrect object received. Check Massage.java version.");
+                System.err.println("Incorrect object received. Check Message.java version.");
             }
         }
 
@@ -62,4 +77,5 @@ public class Server extends Task<Void> {
 
         return null;
     }
+
 }
