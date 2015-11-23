@@ -52,6 +52,8 @@ public class EventHandling {
     private Button statusButton;
     @FXML
     private Button rcButton;
+    @FXML
+    private TextField altTextfield;
 
 
     public EventHandling() {
@@ -195,6 +197,7 @@ public class EventHandling {
     private void lift() {
         byte[] mavLinkByteArray = null;
 
+        /*
         msg_mission_item mi = new msg_mission_item(sysId, componentId);
         mi.target_system = 1;
         mi.target_component = 1;
@@ -205,16 +208,23 @@ public class EventHandling {
         mi.autocontinue = 0;
         mi.x = 0;
         mi.y = 0;
-        mi.z = 0;
+        mi.z = 1000;
+        */
+
+        msg_command_long cl = new msg_command_long(sysId, componentId);
+        cl.target_system = 1;
+        cl.target_component = 1;
+        cl.command = 22;
+        cl.param7 = Float.parseFloat(altTextfield.getText());
 
         try {
-            mavLinkByteArray = mi.encode();
+            mavLinkByteArray = cl.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         send(MessageType.MAVLINK, mavLinkByteArray);
-        executeMission();
+        //executeMission();
     }
     private void land() {
         byte[] mavLinkByteArray = null;

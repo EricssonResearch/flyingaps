@@ -14,18 +14,20 @@
             <TextField fx:id="lngTextfield" layoutX="106.0" layoutY="314.0" prefHeight="25.0" prefWidth="79.0" text="0" />
             <Label layoutX="106.0" layoutY="297.0" text="Longitude" />
             <Label layoutX="12.0" layoutY="297.0" text="Latitude" />
-            <Button fx:id="missionButton" layoutX="11.0" layoutY="272.0" mnemonicParsing="false" text="Fly to" />
-            <Button fx:id="landButton" layoutX="112.0" layoutY="227.0" mnemonicParsing="false" text="Land" />
+            <Button fx:id="missionButton" layoutX="11.0" layoutY="233.0" mnemonicParsing="false" text="Fly to" />
+            <Button fx:id="landButton" layoutX="80.0" layoutY="202.0" mnemonicParsing="false" text="Land" />
             <CheckBox fx:id="connectedCheckBox" disable="true" layoutX="14.0" layoutY="14.0" mnemonicParsing="false" text="Drone not connected" />
             <ProgressBar disable="true" layoutX="12.0" layoutY="366.0" opacity="0.6" prefHeight="18.0" prefWidth="79.0" progress="0.0" />
             <Label layoutX="17.0" layoutY="349.0" text=" Battery level" />
             <Slider fx:id="wifiSlider" blockIncrement="1.0" layoutX="120.0" layoutY="368.0" majorTickUnit="1.0" max="0.5" min="0" minorTickCount="1" prefHeight="14.0" prefWidth="71.0" snapToTicks="true" />
             <Label layoutX="126.0" layoutY="349.0" text="On Wifi Off" />
             <WebView fx:id="webView" layoutX="205.0" prefHeight="398.0" prefWidth="400.0" />
-            <Button fx:id="liftButton" layoutX="12.0" layoutY="227.0" mnemonicParsing="false" text="Take off" />
-            <Button fx:id="statusButton" layoutX="67.0" layoutY="272.0" mnemonicParsing="false" text="get status" />
-            <Button fx:id="armButton" layoutX="14.0" layoutY="187.0" mnemonicParsing="false" text="Arm" />
-            <Button fx:id="rcButton" layoutX="60.0" layoutY="187.0" mnemonicParsing="false" text="RC" />
+            <Button fx:id="liftButton" layoutX="12.0" layoutY="202.0" mnemonicParsing="false" text="Take off" />
+            <Button fx:id="statusButton" layoutX="63.0" layoutY="233.0" mnemonicParsing="false" text="get status" />
+            <Button fx:id="armButton" layoutX="14.0" layoutY="162.0" mnemonicParsing="false" text="Arm" />
+            <Button fx:id="rcButton" layoutX="66.0" layoutY="162.0" mnemonicParsing="false" text="RC" />
+            <Label layoutX="13.0" layoutY="257.0" text="Altitude" />
+            <TextField fx:id="latTextfield1" layoutX="12.0" layoutY="274.0" prefHeight="25.0" prefWidth="79.0" text="0" />
          </children>
       </AnchorPane>
    </children>
