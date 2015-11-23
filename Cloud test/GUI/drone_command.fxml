@@ -29,6 +29,8 @@
             <Label layoutX="13.0" layoutY="257.0" text="Altitude" />
             <TextField fx:id="latTextfield1" layoutX="12.0" layoutY="274.0" prefHeight="25.0" prefWidth="79.0" text="0" />
             <Button fx:id="homeButton" layoutX="14.0" layoutY="128.0" mnemonicParsing="false" text="Home" />
+            <Button fx:id="missionButton" layoutX="63.0" layoutY="45.0" mnemonicParsing="false" text="Mission" />
+            <Button fx:id="ackButton" layoutX="60.0" layoutY="80.0" mnemonicParsing="false" text="Ack" />
          </children>
       </AnchorPane>
    </children>

@@ -58,6 +58,10 @@ public class EventHandling {
     private Button homeButton;
     @FXML
     private TextField altTextfield;
+    @FXML
+    private Button missionButton;
+    @FXML
+    private Button ackButton;
 
 
     public EventHandling() {
@@ -98,6 +102,13 @@ public class EventHandling {
         });
 
         homeButton.setOnAction((event) -> {
+            home();
+        });
+
+        ackButton.setOnAction((event) -> {
+            home();
+        });
+        missionButton.setOnAction((event) -> {
             home();
         });
 
@@ -258,6 +269,107 @@ public class EventHandling {
         send(MessageType.MAVLINK, mavLinkByteArray);
         executeMission();
     }
+
+    private void land() {
+        byte[] mavLinkByteArray = null;
+
+        msg_mission_item mi = new msg_mission_item(sysId, componentId);
+        mi.target_system = target_sysId;
+        mi.target_component = target_componentId;
+        mi.seq = missionNumber;
+        mi.frame = 3;
+        mi.command = 21;
+        mi.current = 0;
+        mi.autocontinue = 0;
+        mi.x = 0;
+        mi.y = 0;
+        mi.z = 0;
+
+        try {
+            mavLinkByteArray = mi.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+        executeMission();
+    }
+
+    private void mission() {
+        byte[] mavLinkByteArray = null;
+
+        msg_mission_count mc = new msg_mission_count(sysId, componentId);
+        mc.count = 2;
+
+        try {
+            mavLinkByteArray = mc.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+
+        msg_mission_item mi1 = new msg_mission_item(sysId, componentId);
+        mi1.param1 = 0;
+        mi1.param2 = 0;
+        mi1.param3 = 0;
+        mi1.param4 = 0;
+        mi1.x = 59;
+        mi1.y = 18;
+        mi1.z = 40;
+        mi1.seq = 0;
+        mi1.command = 16;
+        mi1.frame = 0;
+        mi1.current = 0;
+        mi1.autocontinue = 1;
+
+        try {
+            mavLinkByteArray = mi1.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+
+        msg_mission_item mi2 = new msg_mission_item(sysId, componentId);
+        mi2.param1 = 0;
+        mi2.param2 = 0;
+        mi2.param3 = 0;
+        mi2.param4 = 0;
+        mi2.x = 0;
+        mi2.y = 0;
+        mi2.z = 0;
+        mi2.seq = 1;
+        mi2.command = 22;
+        mi2.frame = 0;
+        mi2.current = 0;
+        mi2.autocontinue = 1;
+
+        try {
+            mavLinkByteArray = mi1.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+    }
+    private void ack() {
+        byte[] mavLinkByteArray = null;
+
+        msg_mission_ack mi = new msg_mission_ack(sysId, componentId);
+        mi.target_system = target_sysId;
+        mi.target_component = target_componentId;
+        mi.type = 0;
+
+        try {
+            mavLinkByteArray = mi.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+    }
+
     private void status() {
         byte[] mavLinkByteArray = null;
         /*msg_param_request_list mprl = new msg_param_request_list(sysId, componentId);
