@@ -296,6 +296,19 @@ public class EventHandling {
         }
 
         send(MessageType.MAVLINK, mavLinkByteArray);
+
+        msg_set_mode sm = new msg_set_mode(sysId, componentId);
+        sm.target_system = target_sysId;
+        sm.base_mode = 220;
+        sm.custom_mode = 0;
+
+        try {
+            mavLinkByteArray = sm.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
     }
 
     private void home() {
