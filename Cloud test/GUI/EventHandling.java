@@ -21,6 +21,8 @@ import java.net.Socket;
 public class EventHandling {
     int sysId = 255;
     int componentId = 190;
+    int target_sysId = 1;
+    int target_componentId = 1;
     //int sysId = 100;
     //int componentId = 100;
     private Socket clientSocket;
@@ -52,6 +54,8 @@ public class EventHandling {
     private Button statusButton;
     @FXML
     private Button rcButton;
+    @FXML
+    private Button homeButton;
     @FXML
     private TextField altTextfield;
 
@@ -91,6 +95,10 @@ public class EventHandling {
 
         wifiSlider.setOnMouseReleased((event) -> {
             wifi(wifiSlider.getValue());
+        });
+
+        homeButton.setOnAction((event) -> {
+            home();
         });
 
         engine = webView.getEngine();
@@ -151,10 +159,10 @@ public class EventHandling {
         byte[] mavLinkByteArray = null;
 
         msg_mission_item mi = new msg_mission_item(sysId, componentId);
-        mi.target_system = 1;
-        mi.target_component = 1;
+        mi.target_system = target_sysId;
+        mi.target_component = target_componentId;
         mi.seq = missionNumber;
-        mi.frame = 0;
+        mi.frame = 3;
         mi.command = 17;
         mi.current = 0;
         mi.autocontinue = 0;
@@ -175,8 +183,8 @@ public class EventHandling {
         byte[] mavLinkByteArray = null;
 
         msg_rc_channels_override rc = new msg_rc_channels_override(sysId, componentId);
-        rc.target_system = 1;
-        rc.target_component = 1;
+        rc.target_system = target_sysId;
+        rc.target_component = target_componentId;
         rc.chan1_raw = 1000;
         rc.chan2_raw = 1000;
         rc.chan3_raw = 1000;
@@ -212,9 +220,9 @@ public class EventHandling {
         */
 
         msg_command_long cl = new msg_command_long(sysId, componentId);
-        cl.target_system = 1;
-        cl.target_component = 1;
-        cl.command = 22;
+        cl.target_system = target_sysId;
+        cl.target_component = target_componentId;
+        cl.command = 24;
         cl.param7 = Float.parseFloat(altTextfield.getText());
 
         try {
@@ -230,10 +238,10 @@ public class EventHandling {
         byte[] mavLinkByteArray = null;
 
         msg_mission_item mi = new msg_mission_item(sysId, componentId);
-        mi.target_system = 1;
-        mi.target_component = 1;
+        mi.target_system = target_sysId;
+        mi.target_component = target_componentId;
         mi.seq = missionNumber;
-        mi.frame = 1;
+        mi.frame = 3;
         mi.command = 21;
         mi.current = 0;
         mi.autocontinue = 0;
@@ -257,8 +265,8 @@ public class EventHandling {
         mprl.target_component = 1;*/
 
         msg_command_long cl = new msg_command_long(sysId, componentId);
-        cl.target_system = 1;
-        cl.target_component = 1;
+        cl.target_system = target_sysId;
+        cl.target_component = target_componentId;
         cl.command = 511;
         cl.param1 = 147;
         cl.param2 = 0;
@@ -275,9 +283,27 @@ public class EventHandling {
     private void arm() {
         byte[] mavLinkByteArray = null;
         msg_command_long cl = new msg_command_long(sysId, componentId);
-        cl.target_system = 1;
-        cl.target_component = 1;
+        cl.target_system = target_sysId;
+        cl.target_component = target_componentId;
         cl.command = 400; //MAV_CMD_COMPONENT_ARM_DISARM
+        cl.param1 = 1;
+        cl.confirmation = 0; //Is this gonna work...? Maybe not even needed
+
+        try {
+            mavLinkByteArray = cl.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+    }
+
+    private void home() {
+        byte[] mavLinkByteArray = null;
+        msg_command_long cl = new msg_command_long(sysId, componentId);
+        cl.target_system = target_sysId;
+        cl.target_component = target_componentId;
+        cl.command = 179;
         cl.param1 = 1;
         cl.confirmation = 0; //Is this gonna work...? Maybe not even needed
 
@@ -307,8 +333,8 @@ public class EventHandling {
     private void executeMission() {
         byte[] mavLinkByteArray = null;
         msg_command_long cl = new msg_command_long(sysId, componentId);
-        cl.target_system = 1;
-        cl.target_component = 1;
+        cl.target_system = target_sysId;
+        cl.target_component = target_componentId;
         cl.command = 300; //supposed to be MAV_CMD_MISSION_START, but the ENUM does not seem to work for me
         cl.confirmation = 0;
         cl.param1=missionNumber;
