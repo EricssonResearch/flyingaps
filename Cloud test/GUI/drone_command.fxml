@@ -14,7 +14,7 @@
             <TextField fx:id="lngTextfield" layoutX="106.0" layoutY="314.0" prefHeight="25.0" prefWidth="79.0" text="0" />
             <Label layoutX="106.0" layoutY="297.0" text="Longitude" />
             <Label layoutX="12.0" layoutY="297.0" text="Latitude" />
-            <Button fx:id="missionButton" layoutX="11.0" layoutY="233.0" mnemonicParsing="false" text="Fly to" />
+            <Button fx:id="flyButton" layoutX="11.0" layoutY="233.0" mnemonicParsing="false" text="Fly to" />
             <Button fx:id="landButton" layoutX="80.0" layoutY="202.0" mnemonicParsing="false" text="Land" />
             <CheckBox fx:id="connectedCheckBox" disable="true" layoutX="14.0" layoutY="14.0" mnemonicParsing="false" text="Drone not connected" />
             <ProgressBar disable="true" layoutX="12.0" layoutY="366.0" opacity="0.6" prefHeight="18.0" prefWidth="79.0" progress="0.0" />

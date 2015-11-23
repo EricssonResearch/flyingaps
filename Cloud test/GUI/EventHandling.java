@@ -33,7 +33,7 @@ public class EventHandling {
     private int missionNumber=0;
 
     @FXML
-    private Button missionButton;
+    private Button flyButton;
     @FXML
     private Button liftButton;
     @FXML
@@ -73,7 +73,7 @@ public class EventHandling {
         System.out.println("Init!");
         setUpServer();
 
-        missionButton.setOnAction((event) -> {
+        flyButton.setOnAction((event) -> {
             flyTo();
         });
 
@@ -245,31 +245,6 @@ public class EventHandling {
         send(MessageType.MAVLINK, mavLinkByteArray);
         //executeMission();
     }
-    private void land() {
-        byte[] mavLinkByteArray = null;
-
-        msg_mission_item mi = new msg_mission_item(sysId, componentId);
-        mi.target_system = target_sysId;
-        mi.target_component = target_componentId;
-        mi.seq = missionNumber;
-        mi.frame = 3;
-        mi.command = 21;
-        mi.current = 0;
-        mi.autocontinue = 0;
-        mi.x = 0;
-        mi.y = 0;
-        mi.z = 0;
-
-        try {
-            mavLinkByteArray = mi.encode();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        send(MessageType.MAVLINK, mavLinkByteArray);
-        executeMission();
-    }
-
     private void land() {
         byte[] mavLinkByteArray = null;
 
