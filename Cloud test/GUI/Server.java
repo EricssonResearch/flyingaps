@@ -8,11 +8,13 @@ import se.kth.mf2063.internetdrone.Message;
 
 public class Server extends Task<Void> {
     private Socket clientSocket;
+    private WpProtocol wpProtocol;
     EventHandling handleGUI;
 
-    public Server(EventHandling handleGUI, Socket clientSocket) {
+    public Server(EventHandling handleGUI, Socket clientSocket, WpProtocol wpProtocol) {
         this.clientSocket = clientSocket;
         this.handleGUI = handleGUI;
+        this.wpProtocol = wpProtocol;
     }
 
     @Override
@@ -54,7 +56,7 @@ public class Server extends Task<Void> {
 
                 System.out.println(sb.toString());
 */
-                mavlinkMessageInfo = DroneCommunication.mavlink_decode(msg.getByteArray());
+                mavlinkMessageInfo = DroneCommunication.mavlink_decode(msg.getByteArray(), wpProtocol);
 
                 if(mavlinkMessageInfo.length() != 0)
                     System.out.println(mavlinkMessageInfo);
@@ -77,5 +79,4 @@ public class Server extends Task<Void> {
 
         return null;
     }
-
 }

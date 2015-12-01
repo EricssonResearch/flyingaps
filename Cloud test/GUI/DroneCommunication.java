@@ -157,7 +157,7 @@ class DroneCommunication {
     }
 
 
-    public static String mavlink_decode(byte [] buffer) {
+    public static String mavlink_decode(byte [] buffer, WpProtocol wpProtocol) {
         DataInputStream dis = null;
         MAVLinkReader reader = null;
         MAVLinkMessage msg = null;
@@ -301,10 +301,15 @@ class DroneCommunication {
                     case 39:
                         /* MISSION_ITEM */
                         log += "MISSION_ITEM \n";
+                        msg_mission_item missionItem = (msg_mission_item)msg;
+                        log += ">> "+missionItem.toString();
                         break;
                     case 40:
                         /* MISSION_REQUEST */
                         log += "MISSION_REQUEST \n";
+                        msg_mission_request missionRequest = (msg_mission_request)msg;
+                        log += ">> "+missionRequest.toString();
+                        wpProtocol.notifyLock(missionRequest.seq);
                         break;
                     case 41:
                         /* MISSION_SET_CURRENT */
@@ -337,6 +342,7 @@ class DroneCommunication {
                         log += "MISSION_ACK \n";
                         msg_mission_ack mma = (msg_mission_ack) msg;
                         log+= ">> " + mma.toString() + "\n";
+                        wpProtocol.notifyLock(-2);
                         break;
                     case 48:
                         /* SET_GPS_GLOBAL_ORIGIN */

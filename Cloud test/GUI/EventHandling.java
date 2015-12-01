@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.LinkedBlockingQueue;
 
 
 public class EventHandling {
@@ -26,11 +27,14 @@ public class EventHandling {
     //int sysId = 100;
     //int componentId = 100;
     private Socket clientSocket;
-    private int port = 12345;
+    private int port = 9119;
     private WebEngine engine;
     ObjectOutputStream objectOut;
     private double wifiStatus = 0;
     private int missionNumber=0;
+    private WpProtocol wpProtocol;
+    private Object lock;
+    private LinkedBlockingQueue q;
 
     @FXML
     private Button flyButton;
@@ -62,6 +66,18 @@ public class EventHandling {
     private Button missionButton;
     @FXML
     private Button ackButton;
+    @FXML
+    private Button modeButton;
+    @FXML
+    private Button clearButton;
+    @FXML
+    private Button currentButton2;
+    @FXML
+    private Button currentButton;
+    @FXML
+    private Button stabilButton;
+    @FXML
+    private Button listButton;
 
 
     public EventHandling() {
@@ -75,6 +91,9 @@ public class EventHandling {
 
         flyButton.setOnAction((event) -> {
             flyTo();
+        });
+        missionButton.setOnAction((event) -> {
+            mission();
         });
 
         liftButton.setOnAction((event) -> {
@@ -93,6 +112,10 @@ public class EventHandling {
             status();
         });
 
+        modeButton.setOnAction((event) -> {
+            mode();
+        });
+
         armButton.setOnAction((event) -> {
             arm();
         });
@@ -106,10 +129,22 @@ public class EventHandling {
         });
 
         ackButton.setOnAction((event) -> {
-            home();
+            ack();
         });
-        missionButton.setOnAction((event) -> {
-            home();
+        clearButton.setOnAction((event) -> {
+            clear();
+        });
+        stabilButton.setOnAction((event) -> {
+            stabil();
+        });
+        currentButton.setOnAction((event) -> {
+            current();
+        });
+        currentButton2.setOnAction((event) -> {
+            current2();
+        });
+        listButton.setOnAction((event) -> {
+            list();
         });
 
         engine = webView.getEngine();
@@ -130,6 +165,10 @@ public class EventHandling {
 
     void setUpServer() {//Only allow one connection
         System.out.println("setup server socket!");
+        lock = new Object();
+        q = new LinkedBlockingQueue<Message>();
+        wpProtocol = new WpProtocol(lock, q);
+
         Task<Socket> task = new Task<Socket>() {
             @Override
             protected Socket call() {
@@ -142,7 +181,9 @@ public class EventHandling {
                     e.printStackTrace();
                 }
                 System.out.println("Connection accepted!");
-                Server serverTask = new Server(EventHandling.this, clientSocket);
+
+                Server serverTask = new Server(EventHandling.this, clientSocket, wpProtocol);
+
                 new Thread(serverTask).start();
                 try {
                     serverSocket.close();
@@ -163,6 +204,8 @@ public class EventHandling {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            wpProtocol.setObjectOut(objectOut);
+            new Thread(wpProtocol).start();
         });
     }
 
@@ -188,7 +231,6 @@ public class EventHandling {
         }
 
         send(MessageType.MAVLINK, mavLinkByteArray);
-        executeMission();
     }
     private void rc() {
         byte[] mavLinkByteArray = null;
@@ -196,14 +238,14 @@ public class EventHandling {
         msg_rc_channels_override rc = new msg_rc_channels_override(sysId, componentId);
         rc.target_system = target_sysId;
         rc.target_component = target_componentId;
-        rc.chan1_raw = 1000;
-        rc.chan2_raw = 1000;
-        rc.chan3_raw = 1000;
-        rc.chan4_raw = 1000;
-        rc.chan5_raw = 1000;
-        rc.chan6_raw = 1000;
-        rc.chan7_raw = 1000;
-        rc.chan8_raw = 1000;
+        rc.chan1_raw = 1100;
+        rc.chan2_raw = 1100;
+        rc.chan3_raw = 1100;
+        rc.chan4_raw = 1100;
+        rc.chan5_raw = 1100;
+        rc.chan6_raw = 1100;
+        rc.chan7_raw = 1100;
+        rc.chan8_raw = 1100;
 
         try {
             mavLinkByteArray = rc.encode();
@@ -223,7 +265,7 @@ public class EventHandling {
         mi.seq = missionNumber;
         mi.frame = 1;
         mi.command = 22;
-        mi.current = 0;
+        mi.current = 0;//try 3
         mi.autocontinue = 0;
         mi.x = 0;
         mi.y = 0;
@@ -233,7 +275,7 @@ public class EventHandling {
         msg_command_long cl = new msg_command_long(sysId, componentId);
         cl.target_system = target_sysId;
         cl.target_component = target_componentId;
-        cl.command = 24;
+        cl.command = 22;
         cl.param7 = Float.parseFloat(altTextfield.getText());
 
         try {
@@ -267,7 +309,38 @@ public class EventHandling {
         }
 
         send(MessageType.MAVLINK, mavLinkByteArray);
-        executeMission();
+    }
+
+    private void clear() {
+        byte[] mavLinkByteArray = null;
+
+        msg_mission_clear_all mmca = new msg_mission_clear_all(sysId, componentId);
+        mmca.target_system = target_sysId;
+        mmca.target_component = target_componentId;
+
+        try {
+            mavLinkByteArray = mmca.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+    }
+
+    private void list() {
+        byte[] mavLinkByteArray = null;
+
+        msg_mission_request mmr = new msg_mission_request(sysId, componentId);
+        mmr.target_system = target_sysId;
+        mmr.target_component = target_componentId;
+
+        try {
+            mavLinkByteArray = mmr.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
     }
 
     private void mission() {
@@ -282,16 +355,21 @@ public class EventHandling {
             e.printStackTrace();
         }
 
-        send(MessageType.MAVLINK, mavLinkByteArray);
+        Message msg = new Message();
+        msg.setByteArray(mavLinkByteArray);
+        msg.setMessageType(MessageType.MAVLINK);
+        q.add(msg);
 
         msg_mission_item mi1 = new msg_mission_item(sysId, componentId);
+        mi1.target_system = target_sysId;
+        mi1.target_component = target_componentId;
         mi1.param1 = 0;
         mi1.param2 = 0;
         mi1.param3 = 0;
         mi1.param4 = 0;
-        mi1.x = 59;
-        mi1.y = 18;
-        mi1.z = 40;
+        mi1.x = 0;
+        mi1.y = 0;
+        mi1.z = 0;
         mi1.seq = 0;
         mi1.command = 16;
         mi1.frame = 0;
@@ -304,16 +382,21 @@ public class EventHandling {
             e.printStackTrace();
         }
 
-        send(MessageType.MAVLINK, mavLinkByteArray);
+        msg = new Message();
+        msg.setByteArray(mavLinkByteArray);
+        msg.setMessageType(MessageType.MAVLINK);
+        q.add(msg);
 
         msg_mission_item mi2 = new msg_mission_item(sysId, componentId);
+        mi2.target_system = target_sysId;
+        mi2.target_component = target_componentId;
         mi2.param1 = 0;
         mi2.param2 = 0;
         mi2.param3 = 0;
         mi2.param4 = 0;
         mi2.x = 0;
         mi2.y = 0;
-        mi2.z = 0;
+        mi2.z = Float.parseFloat(altTextfield.getText());
         mi2.seq = 1;
         mi2.command = 22;
         mi2.frame = 0;
@@ -321,12 +404,33 @@ public class EventHandling {
         mi2.autocontinue = 1;
 
         try {
-            mavLinkByteArray = mi1.encode();
+            mavLinkByteArray = mi2.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        send(MessageType.MAVLINK, mavLinkByteArray);
+        msg = new Message();
+        msg.setByteArray(mavLinkByteArray);
+        msg.setMessageType(MessageType.MAVLINK);
+        q.add(msg);
+
+        msg_mission_ack mi = new msg_mission_ack(sysId, componentId);
+        mi.target_system = target_sysId;
+        mi.target_component = target_componentId;
+        mi.type = 0;
+
+        try {
+            mavLinkByteArray = mi.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        msg = new Message();
+        msg.setByteArray(mavLinkByteArray);
+        msg.setMessageType(MessageType.MAVLINK);
+        q.add(msg);
+
+        wpProtocol.notifyLock(-1);
     }
     private void ack() {
         byte[] mavLinkByteArray = null;
@@ -383,11 +487,15 @@ public class EventHandling {
         }
 
         send(MessageType.MAVLINK, mavLinkByteArray);
+    }
+
+    private void stabil() {
+        byte[] mavLinkByteArray = null;
 
         msg_set_mode sm = new msg_set_mode(sysId, componentId);
         sm.target_system = target_sysId;
-        sm.base_mode = 220;
-        sm.custom_mode = 0;
+        sm.base_mode = 1;
+        sm.custom_mode = 1;
 
         try {
             mavLinkByteArray = sm.encode();
@@ -396,6 +504,47 @@ public class EventHandling {
         }
 
         send(MessageType.MAVLINK, mavLinkByteArray);
+    }
+
+    private void mode() {
+        byte[] mavLinkByteArray = null;
+
+        msg_set_mode sm = new msg_set_mode(sysId, componentId);
+        sm.target_system = target_sysId;
+        sm.base_mode = 1;
+        sm.custom_mode = 3;
+
+        try {
+            mavLinkByteArray = sm.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+
+/*
+        byte[] mavLinkByteArray = null;
+        msg_command_long cl = new msg_command_long(sysId, componentId);
+        cl.target_system = target_sysId;
+        cl.target_component = target_componentId;
+        cl.command = 300; //supposed to be MAV_CMD_MISSION_START, but the ENUM does not seem to work for me
+        cl.confirmation = 0;
+        cl.param1=0;
+        cl.param2=0;
+        cl.param3=0;
+        cl.param4=0;
+        cl.param5=0;
+        cl.param6=0;
+        cl.param7=0;
+        cl.confirmation=0;
+
+        try {
+            mavLinkByteArray = cl.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);*/
     }
 
     private void home() {
@@ -430,19 +579,37 @@ public class EventHandling {
         }
     }
 
-    private void executeMission() {
+    private void current() {
         byte[] mavLinkByteArray = null;
         msg_command_long cl = new msg_command_long(sysId, componentId);
         cl.target_system = target_sysId;
         cl.target_component = target_componentId;
         cl.command = 300; //supposed to be MAV_CMD_MISSION_START, but the ENUM does not seem to work for me
         cl.confirmation = 0;
-        cl.param1=missionNumber;
-        cl.param2=missionNumber;
-        missionNumber++;
+        cl.param1=0;
+        cl.param2=0;
 
         try {
             mavLinkByteArray = cl.encode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        send(MessageType.MAVLINK, mavLinkByteArray);
+
+
+    }
+
+    private void current2() {
+        byte[] mavLinkByteArray = null;
+
+        msg_mission_set_current mmsc = new msg_mission_set_current(sysId, componentId);
+        mmsc.target_system = target_sysId;
+        mmsc.target_component = target_componentId;
+        mmsc.seq = 0;
+
+        try {
+            mavLinkByteArray = mmsc.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
