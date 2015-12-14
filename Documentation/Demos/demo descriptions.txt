@@ -8,3 +8,20 @@ autopilot - take off - fly to preset location.mp4
 	in the centre of the grass field using autopilot. The mission was preloaded into
 	the drone using the APM planner software. Note that due to the low altitude the
 	pilot takes control of the drone at the end of the clip to land manually.
+
+autopilot - take off - waypoints - land.mp4
+	A video clip showing the drone taking off and then flying between multiple 
+	waypoints. Note how the drone lands at the fourth waypoint, waits a while, and 
+	then takes off again to fly back to the location from which it started. Mission 
+	was preloaded into the drone using APM planner software. The entire flight is 
+	automated and done without inputs from the pilot.
+
+cloud - arm - disarm.mp4
+	A video clip showing the drone starting (arming) and stopping (disarming) its 
+	engines when commands are entered into the remote control software running on a 
+	laptop connected to the drone via the internet.
+
+cloud - take off - hover - land.mp4
+	A video clip showing the drone taking off, hovering in mid-air, and landing in 
+	various combinations when commanded to do so using the remote control software 
+	running on a computer connected to the drone via the internet.
