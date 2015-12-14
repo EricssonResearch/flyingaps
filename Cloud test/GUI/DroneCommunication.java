@@ -178,9 +178,9 @@ class DroneCommunication {
                 switch (msg.messageType) {
                     case 0:
                         /* HEARTBEAT */
-                        //log += "HEARTBEAT \n";
-                        //msg_heartbeat heartbeat = (msg_heartbeat)msg;
-                        //log += ">> "+heartbeat.toString();
+                        log += "HEARTBEAT \n";
+                        msg_heartbeat heartbeat = (msg_heartbeat)msg;
+                        log += ">> "+heartbeat.toString();
                         break;
                     case 1:
                         /* SYS_STATUS */
@@ -309,7 +309,7 @@ class DroneCommunication {
                         log += "MISSION_REQUEST \n";
                         msg_mission_request missionRequest = (msg_mission_request)msg;
                         log += ">> "+missionRequest.toString();
-                        wpProtocol.notifyLock(missionRequest.seq);
+                        wpProtocol.notifyLock(missionRequest.seq,0);
                         break;
                     case 41:
                         /* MISSION_SET_CURRENT */
@@ -328,6 +328,9 @@ class DroneCommunication {
                     case 44:
                         /* MISSION_COUNT */
                         log += "MISSION_COUNT \n";
+                        msg_mission_count missionCount = (msg_mission_count)msg;
+                        log += ">> "+missionCount.toString();
+                        wpProtocol.notifyLock(missionCount.count, 3);
                         break;
                     case 45:
                         /* MISSION_CLEAR_ALL */
@@ -342,7 +345,7 @@ class DroneCommunication {
                         log += "MISSION_ACK \n";
                         msg_mission_ack mma = (msg_mission_ack) msg;
                         log+= ">> " + mma.toString() + "\n";
-                        wpProtocol.notifyLock(-2);
+                        wpProtocol.notifyLock(-1,2);
                         break;
                     case 48:
                         /* SET_GPS_GLOBAL_ORIGIN */
@@ -371,6 +374,8 @@ class DroneCommunication {
                     case 62:
                         /* NAV_CONTROLLER_OUTPUT */
                         log += "NAV_CONTROLLER_OUTPUT \n";
+                        msg_nav_controller_output mnco = (msg_nav_controller_output) msg;
+                        log+= ">> " + mnco.toString() + "\n";
                         break;
                     case 63:
                         /* GLOBAL_POSITION_INT_COV */
@@ -387,6 +392,8 @@ class DroneCommunication {
                     case 66:
                         /* REQUEST_DATA_STREAM */
                         log += "REQUEST_DATA_STREAM \n";
+                        msg_request_data_stream mrd = (msg_request_data_stream) msg;
+                        log+= ">> " + mrd.toString() + "\n";
                         break;
                     case 67:
                         /* DATA_STREAM */
@@ -557,6 +564,8 @@ class DroneCommunication {
                     case 125:
                         /* POWER_STATUS */
                         log += "POWER_STATUS \n";
+                        msg_power_status mps = (msg_power_status) msg;
+                        log += ">> " + mps.toString() + "\n";
                         break;
                     case 127:
                         /* GPS_RTK */
@@ -651,6 +660,8 @@ class DroneCommunication {
                     case 242:
                         /* HOME_POSITION */
                         log += "HOME_POSITION \n";
+                        msg_home_position hp = (msg_home_position) msg;
+                        log += ">> " + hp.toString() + "\n";
                         break;
                     case 243:
                         /* SET_HOME_POSITION */

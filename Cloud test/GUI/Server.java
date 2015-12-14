@@ -22,7 +22,7 @@ public class Server extends Task<Void> {
 
         System.out.println("Receiving server thread running!");
         Message msg;
-        Object receivedObject = null;
+        Object receivedObject;
         String mavlinkMessageInfo;
 
         ObjectInputStream ois = null;
@@ -46,16 +46,6 @@ public class Server extends Task<Void> {
             if ((receivedObject != null) && (receivedObject instanceof Message)) {
                 msg = (Message) receivedObject;
 
-                //Print raw data
-                /*StringBuilder sb = new StringBuilder();
-                sb.append("numberOfRxBytes: " + msg.getByteArray().length + "\n");
-                for (byte b : msg.getByteArray()) {
-                    sb.append(String.format("%02x", b));
-                }
-                sb.append("\n");
-
-                System.out.println(sb.toString());
-*/
                 mavlinkMessageInfo = DroneCommunication.mavlink_decode(msg.getByteArray(), wpProtocol);
 
                 if(mavlinkMessageInfo.length() != 0)

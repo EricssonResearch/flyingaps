@@ -9,18 +9,14 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-    private Stage primaryStage;
-    private Pane rootLayout;
-
     @Override
     public void start(Stage primaryStage) {
-        this.primaryStage = primaryStage;
-        this.primaryStage.setTitle("Drone Command");
+        primaryStage.setTitle("Drone Command");
 
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(Main.class.getResource("drone_command.fxml"));
-            rootLayout = loader.load();
+            Pane rootLayout = loader.load();
 
             Scene scene = new Scene(rootLayout);
             primaryStage.setScene(scene);

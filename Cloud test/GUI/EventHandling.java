@@ -1,12 +1,12 @@
 
+import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Slider;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
+import javafx.collections.ObservableList;
 import netscape.javascript.JSObject;
 import org.mavlink.messages.ja4rtor.*;
 import se.kth.mf2063.internetdrone.Message;
@@ -24,8 +24,6 @@ public class EventHandling {
     int componentId = 190;
     int target_sysId = 1;
     int target_componentId = 1;
-    //int sysId = 100;
-    //int componentId = 100;
     private Socket clientSocket;
     private int port = 9119;
     private WebEngine engine;
@@ -34,7 +32,26 @@ public class EventHandling {
     private int missionNumber=0;
     private WpProtocol wpProtocol;
     private Object lock;
-    private LinkedBlockingQueue q;
+    private LinkedBlockingQueue<byte []> q;
+    private long startTime;
+    private ObservableList<MissionItem> missionItems;
+
+    private final int mode_RTL      = 6;
+    private final int mode_POSHOLD  = 16;
+    private final int mode_LAND     = 9;
+    private final int mode_OF_LOITER= 10;
+    private final int mode_STABILIZE= 0;
+    private final int mode_AUTO     = 3;
+    private final int mode_GUIDED   = 4;
+    private final int mode_DRIFT    = 11;
+    private final int mode_FLIP     = 14;
+    private final int mode_AUTOTUNE = 15;
+    private final int mode_ALT_HOLD = 2;
+    private final int mode_LOITER   = 5;
+    private final int mode_POSITION = 8;
+    private final int mode_CIRCLE   = 7;
+    private final int mode_SPORT    = 13;
+    private final int mode_ACRO     = 1;
 
     @FXML
     private Button flyButton;
@@ -55,29 +72,45 @@ public class EventHandling {
     @FXML
     private Button armButton;
     @FXML
+    private Button disarmButton;
+    @FXML
     private Button statusButton;
-    @FXML
-    private Button rcButton;
-    @FXML
-    private Button homeButton;
     @FXML
     private TextField altTextfield;
     @FXML
+    private TextField holdTextfield;
+    @FXML
+    private TextField seqTextfield;
+    @FXML
     private Button missionButton;
     @FXML
-    private Button ackButton;
-    @FXML
-    private Button modeButton;
+    private Button autoButton;
     @FXML
     private Button clearButton;
-    @FXML
-    private Button currentButton2;
     @FXML
     private Button currentButton;
     @FXML
     private Button stabilButton;
     @FXML
     private Button listButton;
+    @FXML
+    private Button guidedButton;
+    @FXML
+    private Button startButton;
+    @FXML
+    private Button stopButton;
+    @FXML
+    private TableColumn commandField;
+    @FXML
+    private TableColumn latField;
+    @FXML
+    private TableColumn longField;
+    @FXML
+    private TableColumn altField;
+    @FXML
+    private TableColumn holdField;
+    @FXML
+    private TableView missionTable;
 
 
     public EventHandling() {
@@ -87,65 +120,35 @@ public class EventHandling {
     @FXML
     private void initialize() {
         System.out.println("Init!");
+        startTime = System.currentTimeMillis();
         setUpServer();
+        missionItems = FXCollections.observableArrayList();
+        commandField.setCellValueFactory(new PropertyValueFactory<MissionItem,String>("command"));
+        latField.setCellValueFactory(new PropertyValueFactory<MissionItem,Float>("latitude"));
+        longField.setCellValueFactory(new PropertyValueFactory<MissionItem,Float>("longitude"));
+        altField.setCellValueFactory(new PropertyValueFactory<MissionItem,Float>("altitude"));
+        holdField.setCellValueFactory(new PropertyValueFactory<MissionItem,Integer>("time"));
 
-        flyButton.setOnAction((event) -> {
-            flyTo();
-        });
-        missionButton.setOnAction((event) -> {
-            mission();
-        });
+        flyButton.setOnAction((event) -> newMissionItem("FLY_TO"));
+        liftButton.setOnAction((event) -> newMissionItem("TAKEOFF"));
+        landButton.setOnAction((event) -> newMissionItem("LAND"));
 
-        liftButton.setOnAction((event) -> {
-            lift();
-        });
+        stabilButton.setOnAction((event) -> changeMode(mode_STABILIZE));
+        guidedButton.setOnAction((event) -> changeMode(mode_GUIDED));
+        autoButton.setOnAction((event) -> changeMode(mode_AUTO));
 
-        landButton.setOnAction((event) -> {
-            land();
-        });
+        missionButton.setOnAction((event) -> mission());
+        statusButton.setOnAction((event) -> status());
+        wifiSlider.setOnMouseReleased((event) -> wifi(wifiSlider.getValue()));
+        clearButton.setOnAction((event) -> clear());
+        currentButton.setOnAction((event) -> current());
+        listButton.setOnAction((event) -> list());
 
-        rcButton.setOnAction((event) -> {
-            rc();
-        });
+        armButton.setOnAction((event) -> arm(1));
+        disarmButton.setOnAction((event) -> arm(0));
 
-        statusButton.setOnAction((event) -> {
-            status();
-        });
-
-        modeButton.setOnAction((event) -> {
-            mode();
-        });
-
-        armButton.setOnAction((event) -> {
-            arm();
-        });
-
-        wifiSlider.setOnMouseReleased((event) -> {
-            wifi(wifiSlider.getValue());
-        });
-
-        homeButton.setOnAction((event) -> {
-            home();
-        });
-
-        ackButton.setOnAction((event) -> {
-            ack();
-        });
-        clearButton.setOnAction((event) -> {
-            clear();
-        });
-        stabilButton.setOnAction((event) -> {
-            stabil();
-        });
-        currentButton.setOnAction((event) -> {
-            current();
-        });
-        currentButton2.setOnAction((event) -> {
-            current2();
-        });
-        listButton.setOnAction((event) -> {
-            list();
-        });
+        startButton.setOnAction((event) -> start());
+        stopButton.setOnAction((event) -> stop());
 
         engine = webView.getEngine();
         String url = Main.class.getResource("map.html").toExternalForm();
@@ -163,10 +166,10 @@ public class EventHandling {
         }
     }
 
-    void setUpServer() {//Only allow one connection
+    void setUpServer() {//Only allow one connection so far
         System.out.println("setup server socket!");
         lock = new Object();
-        q = new LinkedBlockingQueue<Message>();
+        q = new LinkedBlockingQueue<>();
         wpProtocol = new WpProtocol(lock, q);
 
         Task<Socket> task = new Task<Socket>() {
@@ -209,68 +212,47 @@ public class EventHandling {
         });
     }
 
-    private void flyTo() {
+    private void newMissionItem(String command) {
+        float lat = Float.parseFloat(latTextfield.getText());
+        float lng = Float.parseFloat(lngTextfield.getText());
+        float alt = Float.parseFloat(altTextfield.getText());
+        int time = Integer.parseInt(holdTextfield.getText());
+        MissionItem mi;
+
+        if(command == "FLY_TO")
+            mi = new MissionItem(command,lat,lng,alt,time,16);
+        else if(command == "TAKEOFF")
+            mi = new MissionItem(command,0,0,alt,0,22);
+        else if(command == "LAND")
+            mi = new MissionItem(command,0,0,alt,0,21);
+        else {
+            mi = new MissionItem("ERROR!",0,0,0,0,0);
+        }
+
+        missionItems.add(mi);
+        missionTable.setItems(missionItems);
+    }
+
+    private void clear() {
         byte[] mavLinkByteArray = null;
 
-        msg_mission_item mi = new msg_mission_item(sysId, componentId);
-        mi.target_system = target_sysId;
-        mi.target_component = target_componentId;
-        mi.seq = missionNumber;
-        mi.frame = 3;
-        mi.command = 17;
-        mi.current = 0;
-        mi.autocontinue = 0;
-        mi.x = Float.parseFloat(latTextfield.getText());
-        mi.y = Float.parseFloat(lngTextfield.getText());
-        mi.z = 0;
+        msg_mission_clear_all mmca = new msg_mission_clear_all(sysId, componentId);
+        mmca.target_system = target_sysId;
+        mmca.target_component = target_componentId;
 
         try {
-            mavLinkByteArray = mi.encode();
+            mavLinkByteArray = mmca.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         send(MessageType.MAVLINK, mavLinkByteArray);
+        missionTable.getItems().remove(0,missionItems.size());
+        missionTable.refresh();
     }
-    private void rc() {
+
+    private void start() {
         byte[] mavLinkByteArray = null;
-
-        msg_rc_channels_override rc = new msg_rc_channels_override(sysId, componentId);
-        rc.target_system = target_sysId;
-        rc.target_component = target_componentId;
-        rc.chan1_raw = 1100;
-        rc.chan2_raw = 1100;
-        rc.chan3_raw = 1100;
-        rc.chan4_raw = 1100;
-        rc.chan5_raw = 1100;
-        rc.chan6_raw = 1100;
-        rc.chan7_raw = 1100;
-        rc.chan8_raw = 1100;
-
-        try {
-            mavLinkByteArray = rc.encode();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        send(MessageType.MAVLINK, mavLinkByteArray);
-    }
-    private void lift() {
-        byte[] mavLinkByteArray = null;
-
-        /*
-        msg_mission_item mi = new msg_mission_item(sysId, componentId);
-        mi.target_system = 1;
-        mi.target_component = 1;
-        mi.seq = missionNumber;
-        mi.frame = 1;
-        mi.command = 22;
-        mi.current = 0;//try 3
-        mi.autocontinue = 0;
-        mi.x = 0;
-        mi.y = 0;
-        mi.z = 1000;
-        */
 
         msg_command_long cl = new msg_command_long(sysId, componentId);
         cl.target_system = target_sysId;
@@ -285,41 +267,19 @@ public class EventHandling {
         }
 
         send(MessageType.MAVLINK, mavLinkByteArray);
-        //executeMission();
-    }
-    private void land() {
-        byte[] mavLinkByteArray = null;
-
-        msg_mission_item mi = new msg_mission_item(sysId, componentId);
-        mi.target_system = target_sysId;
-        mi.target_component = target_componentId;
-        mi.seq = missionNumber;
-        mi.frame = 3;
-        mi.command = 21;
-        mi.current = 0;
-        mi.autocontinue = 0;
-        mi.x = 0;
-        mi.y = 0;
-        mi.z = 0;
-
-        try {
-            mavLinkByteArray = mi.encode();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        send(MessageType.MAVLINK, mavLinkByteArray);
     }
 
-    private void clear() {
+    private void stop() {
         byte[] mavLinkByteArray = null;
 
-        msg_mission_clear_all mmca = new msg_mission_clear_all(sysId, componentId);
-        mmca.target_system = target_sysId;
-        mmca.target_component = target_componentId;
+        msg_command_long cl = new msg_command_long(sysId, componentId);
+        cl.target_system = target_sysId;
+        cl.target_component = target_componentId;
+        cl.command = 21;
+        cl.param7 = Float.parseFloat(altTextfield.getText());
 
         try {
-            mavLinkByteArray = mmca.encode();
+            mavLinkByteArray = cl.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -340,25 +300,22 @@ public class EventHandling {
             e.printStackTrace();
         }
 
-        send(MessageType.MAVLINK, mavLinkByteArray);
+        q.add(mavLinkByteArray);
+        wpProtocol.notifyLock(-1,4);
     }
 
     private void mission() {
         byte[] mavLinkByteArray = null;
 
         msg_mission_count mc = new msg_mission_count(sysId, componentId);
-        mc.count = 2;
+        mc.count = missionItems.size()+1;
 
         try {
             mavLinkByteArray = mc.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        Message msg = new Message();
-        msg.setByteArray(mavLinkByteArray);
-        msg.setMessageType(MessageType.MAVLINK);
-        q.add(msg);
+        q.add(mavLinkByteArray);
 
         msg_mission_item mi1 = new msg_mission_item(sysId, componentId);
         mi1.target_system = target_sysId;
@@ -367,8 +324,8 @@ public class EventHandling {
         mi1.param2 = 0;
         mi1.param3 = 0;
         mi1.param4 = 0;
-        mi1.x = 0;
-        mi1.y = 0;
+        mi1.x = 0f;
+        mi1.y = 0f;
         mi1.z = 0;
         mi1.seq = 0;
         mi1.command = 16;
@@ -376,94 +333,63 @@ public class EventHandling {
         mi1.current = 0;
         mi1.autocontinue = 1;
 
+        System.out.println(mi1.toString());
+
         try {
             mavLinkByteArray = mi1.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        msg = new Message();
-        msg.setByteArray(mavLinkByteArray);
-        msg.setMessageType(MessageType.MAVLINK);
-        q.add(msg);
+        q.add(mavLinkByteArray);
 
-        msg_mission_item mi2 = new msg_mission_item(sysId, componentId);
-        mi2.target_system = target_sysId;
-        mi2.target_component = target_componentId;
-        mi2.param1 = 0;
-        mi2.param2 = 0;
-        mi2.param3 = 0;
-        mi2.param4 = 0;
-        mi2.x = 0;
-        mi2.y = 0;
-        mi2.z = Float.parseFloat(altTextfield.getText());
-        mi2.seq = 1;
-        mi2.command = 22;
-        mi2.frame = 0;
-        mi2.current = 0;
-        mi2.autocontinue = 1;
+        msg_mission_item mmi;
+        int seq=1;
+        for(MissionItem mi : missionItems) {
+            mmi = new msg_mission_item(sysId, componentId);
+            mmi.target_system = target_sysId;
+            mmi.target_component = target_componentId;
+            mmi.command = mi.getCommandId();
+            mmi.param1 = mi.getTime();
+            mmi.param2 = 0;
+            mmi.param3 = 0;
+            mmi.param4 = 0;
+            mmi.x = mi.getLatitude();
+            mmi.y = mi.getLongitude();
+            mmi.z = mi.getAltitude();
+            mmi.seq = seq;
+            mmi.current = 0;
+            mmi.autocontinue = 1;
+            mmi.frame = 3;
 
-        try {
-            mavLinkByteArray = mi2.encode();
-        } catch (IOException e) {
-            e.printStackTrace();
+            if(mi.getCommandId() == 21) {
+                mmi.autocontinue = 0;
+            }
+
+            System.out.println(mmi.toString());
+            try {
+                mavLinkByteArray = mmi.encode();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            q.add(mavLinkByteArray);
+            seq++;
         }
-
-        msg = new Message();
-        msg.setByteArray(mavLinkByteArray);
-        msg.setMessageType(MessageType.MAVLINK);
-        q.add(msg);
-
-        msg_mission_ack mi = new msg_mission_ack(sysId, componentId);
-        mi.target_system = target_sysId;
-        mi.target_component = target_componentId;
-        mi.type = 0;
-
-        try {
-            mavLinkByteArray = mi.encode();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        msg = new Message();
-        msg.setByteArray(mavLinkByteArray);
-        msg.setMessageType(MessageType.MAVLINK);
-        q.add(msg);
-
-        wpProtocol.notifyLock(-1);
-    }
-    private void ack() {
-        byte[] mavLinkByteArray = null;
-
-        msg_mission_ack mi = new msg_mission_ack(sysId, componentId);
-        mi.target_system = target_sysId;
-        mi.target_component = target_componentId;
-        mi.type = 0;
-
-        try {
-            mavLinkByteArray = mi.encode();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        send(MessageType.MAVLINK, mavLinkByteArray);
+        wpProtocol.notifyLock(-1,1);
     }
 
     private void status() {
         byte[] mavLinkByteArray = null;
-        /*msg_param_request_list mprl = new msg_param_request_list(sysId, componentId);
-        mprl.target_system = 1;
-        mprl.target_component = 1;*/
-
-        msg_command_long cl = new msg_command_long(sysId, componentId);
-        cl.target_system = target_sysId;
-        cl.target_component = target_componentId;
-        cl.command = 511;
-        cl.param1 = 147;
-        cl.param2 = 0;
+        msg_request_data_stream mrds = new msg_request_data_stream(sysId, componentId);
+        mrds.target_system = 1;
+        mrds.target_component = 1;
+        mrds.start_stop = 1;
+        mrds.req_stream_id = 2;
+        mrds.req_message_rate = 1;
 
         try {
-            mavLinkByteArray = cl.encode();
+            mavLinkByteArray = mrds.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -471,72 +397,15 @@ public class EventHandling {
         send(MessageType.MAVLINK, mavLinkByteArray);
     }
 
-    private void arm() {
+    private void arm(int arm) {
         byte[] mavLinkByteArray = null;
+
         msg_command_long cl = new msg_command_long(sysId, componentId);
         cl.target_system = target_sysId;
         cl.target_component = target_componentId;
-        cl.command = 400; //MAV_CMD_COMPONENT_ARM_DISARM
-        cl.param1 = 1;
-        cl.confirmation = 0; //Is this gonna work...? Maybe not even needed
-
-        try {
-            mavLinkByteArray = cl.encode();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        send(MessageType.MAVLINK, mavLinkByteArray);
-    }
-
-    private void stabil() {
-        byte[] mavLinkByteArray = null;
-
-        msg_set_mode sm = new msg_set_mode(sysId, componentId);
-        sm.target_system = target_sysId;
-        sm.base_mode = 1;
-        sm.custom_mode = 1;
-
-        try {
-            mavLinkByteArray = sm.encode();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        send(MessageType.MAVLINK, mavLinkByteArray);
-    }
-
-    private void mode() {
-        byte[] mavLinkByteArray = null;
-
-        msg_set_mode sm = new msg_set_mode(sysId, componentId);
-        sm.target_system = target_sysId;
-        sm.base_mode = 1;
-        sm.custom_mode = 3;
-
-        try {
-            mavLinkByteArray = sm.encode();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        send(MessageType.MAVLINK, mavLinkByteArray);
-
-/*
-        byte[] mavLinkByteArray = null;
-        msg_command_long cl = new msg_command_long(sysId, componentId);
-        cl.target_system = target_sysId;
-        cl.target_component = target_componentId;
-        cl.command = 300; //supposed to be MAV_CMD_MISSION_START, but the ENUM does not seem to work for me
+        cl.command = 400;
+        cl.param1 = arm;
         cl.confirmation = 0;
-        cl.param1=0;
-        cl.param2=0;
-        cl.param3=0;
-        cl.param4=0;
-        cl.param5=0;
-        cl.param6=0;
-        cl.param7=0;
-        cl.confirmation=0;
 
         try {
             mavLinkByteArray = cl.encode();
@@ -544,20 +413,19 @@ public class EventHandling {
             e.printStackTrace();
         }
 
-        send(MessageType.MAVLINK, mavLinkByteArray);*/
+        send(MessageType.MAVLINK, mavLinkByteArray);
     }
 
-    private void home() {
+    private void changeMode(int newMode) {
         byte[] mavLinkByteArray = null;
-        msg_command_long cl = new msg_command_long(sysId, componentId);
-        cl.target_system = target_sysId;
-        cl.target_component = target_componentId;
-        cl.command = 179;
-        cl.param1 = 1;
-        cl.confirmation = 0; //Is this gonna work...? Maybe not even needed
+
+        msg_set_mode sm = new msg_set_mode(sysId, componentId);
+        sm.target_system = target_sysId;
+        sm.base_mode = 1;
+        sm.custom_mode = newMode;
 
         try {
-            mavLinkByteArray = cl.encode();
+            mavLinkByteArray = sm.encode();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -572,19 +440,19 @@ public class EventHandling {
         wifiStatus=status;
 
         if(status == 0) {
-            send(MessageType.WIFIOFF, null);
+            send(MessageType.WIFION, null);
         }
         else {
-            send(MessageType.WIFION, null);
+            send(MessageType.WIFIOFF, null);
         }
     }
 
     private void current() {
         byte[] mavLinkByteArray = null;
-        msg_command_long cl = new msg_command_long(sysId, componentId);
+        /*msg_command_long cl = new msg_command_long(sysId, componentId);
         cl.target_system = target_sysId;
         cl.target_component = target_componentId;
-        cl.command = 300; //supposed to be MAV_CMD_MISSION_START, but the ENUM does not seem to work for me
+        cl.command = 300;
         cl.confirmation = 0;
         cl.param1=0;
         cl.param2=0;
@@ -593,20 +461,12 @@ public class EventHandling {
             mavLinkByteArray = cl.encode();
         } catch (IOException e) {
             e.printStackTrace();
-        }
-
-        send(MessageType.MAVLINK, mavLinkByteArray);
-
-
-    }
-
-    private void current2() {
-        byte[] mavLinkByteArray = null;
+        }*/
 
         msg_mission_set_current mmsc = new msg_mission_set_current(sysId, componentId);
         mmsc.target_system = target_sysId;
         mmsc.target_component = target_componentId;
-        mmsc.seq = 0;
+        mmsc.seq = Integer.parseInt(seqTextfield.getText());
 
         try {
             mavLinkByteArray = mmsc.encode();
@@ -623,10 +483,11 @@ public class EventHandling {
         msg.setMessageType(messageType);
 
         try {
-            objectOut.writeObject(msg);
+            synchronized(objectOut) {
+                objectOut.writeObject(msg);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
 }

@@ -1,67 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import java.lang.*?>
-<?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
 <?import javafx.scene.web.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.web.WebView?>
 
-<Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="499.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="EventHandling">
+<Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="551.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="EventHandling">
    <children>
-      <AnchorPane layoutY="2.0" minHeight="0.0" minWidth="0.0" prefHeight="499.0" prefWidth="600.0">
+      <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="551.0" prefWidth="600.0">
          <children>
             <TextField fx:id="latTextfield" layoutX="12.0" layoutY="314.0" prefHeight="25.0" prefWidth="79.0" text="0" />
             <TextField fx:id="lngTextfield" layoutX="106.0" layoutY="314.0" prefHeight="25.0" prefWidth="79.0" text="0" />
             <Label layoutX="106.0" layoutY="297.0" text="Longitude" />
             <Label layoutX="12.0" layoutY="297.0" text="Latitude" />
-            <Button fx:id="flyButton" layoutX="11.0" layoutY="177.0" mnemonicParsing="false" text="Fly to" />
-            <Button fx:id="landButton" layoutX="65.0" layoutY="152.0" mnemonicParsing="false" text="Land" />
+            <Button fx:id="flyButton" layoutX="107.0" layoutY="95.0" mnemonicParsing="false" text="Fly to" />
+            <Button fx:id="landButton" layoutX="65.0" layoutY="95.0" mnemonicParsing="false" text="Land" />
             <CheckBox fx:id="connectedCheckBox" disable="true" layoutX="14.0" layoutY="14.0" mnemonicParsing="false" text="Drone not connected" />
             <ProgressBar disable="true" layoutX="12.0" layoutY="366.0" opacity="0.6" prefHeight="18.0" prefWidth="79.0" progress="0.0" />
             <Label layoutX="17.0" layoutY="349.0" text=" Battery level" />
-            <Slider fx:id="wifiSlider" blockIncrement="1.0" layoutX="120.0" layoutY="368.0" majorTickUnit="1.0" max="0.5" min="0" minorTickCount="1" prefHeight="14.0" prefWidth="71.0" snapToTicks="true" />
+            <Slider fx:id="wifiSlider" blockIncrement="1.0" layoutX="120.0" layoutY="368.0" majorTickUnit="1.0" max="0.5" min="0" minorTickCount="1" prefHeight="14.0" prefWidth="71.0" snapToTicks="true" value="0.5" />
             <Label layoutX="126.0" layoutY="349.0" text="On Wifi Off" />
-            <WebView fx:id="webView" layoutX="191.0" layoutY="3.0" prefHeight="398.0" prefWidth="400.0" />
-            <Button fx:id="liftButton" layoutX="5.0" layoutY="152.0" mnemonicParsing="false" text="Take off" />
-            <Button fx:id="statusButton" layoutX="58.0" layoutY="177.0" mnemonicParsing="false" text="get status" />
-            <Button fx:id="armButton" layoutX="8.0" layoutY="127.0" mnemonicParsing="false" text="Arm" />
-            <Button fx:id="rcButton" layoutX="64.0" layoutY="202.0" mnemonicParsing="false" text="RC" />
+            <WebView fx:id="webView" layoutX="199.0" prefHeight="391.0" prefWidth="400.0" />
+            <Button fx:id="liftButton" layoutX="7.0" layoutY="95.0" mnemonicParsing="false" text="Take off" />
+            <Button fx:id="statusButton" layoutX="86.0" layoutY="232.0" mnemonicParsing="false" text="get status" />
+            <Button fx:id="armButton" layoutX="9.0" layoutY="145.0" mnemonicParsing="false" text="Arm" />
             <Label layoutX="13.0" layoutY="257.0" text="Altitude" />
             <TextField fx:id="altTextfield" layoutX="12.0" layoutY="274.0" prefHeight="25.0" prefWidth="79.0" text="10" />
-            <Button fx:id="homeButton" layoutX="57.0" layoutY="77.0" mnemonicParsing="false" text="Home" />
-            <Button fx:id="missionButton" layoutX="63.0" layoutY="45.0" mnemonicParsing="false" text="Mission" />
-            <Button fx:id="ackButton" layoutX="10.0" layoutY="77.0" mnemonicParsing="false" text="Ack" />
-            <TextField layoutX="12.0" layoutY="416.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="60.0" layoutY="416.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="158.0" layoutY="416.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="110.0" layoutY="416.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="309.0" layoutY="416.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="357.0" layoutY="416.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="259.0" layoutY="416.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="211.0" layoutY="416.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="406.0" layoutY="416.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="404.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="209.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="257.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="355.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="307.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="108.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="156.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="58.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="10.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="451.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="499.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <TextField layoutX="548.0" layoutY="460.0" prefHeight="25.0" prefWidth="43.0" />
-            <Label layoutX="13.0" layoutY="394.0" text="cmd conf p1 p2 p3 p4 p5 p6 p7" />
-            <Label layoutX="13.0" layoutY="441.0" text="seq frame cmd current autocont p1 p2 p3 p4 x y z" />
-            <Button layoutX="458.0" layoutY="416.0" mnemonicParsing="false" text="CMD L" />
-            <Button layoutX="522.0" layoutY="416.0" mnemonicParsing="false" text="item" />
-            <Button fx:id="modeButton" layoutX="50.0" layoutY="102.0" mnemonicParsing="false" text="Auto" />
-            <Button fx:id="clearButton" layoutX="6.0" layoutY="45.0" mnemonicParsing="false" text="Clear" />
-            <Button fx:id="stabilButton" layoutX="5.0" layoutY="102.0" mnemonicParsing="false" text="Stabil" />
-            <Button fx:id="currentButton" layoutX="9.0" layoutY="202.0" mnemonicParsing="false" text="current" />
-            <Button fx:id="listButton" layoutX="48.0" layoutY="127.0" mnemonicParsing="false" text="list" />
-            <Button fx:id="currentButton2" layoutX="93.0" layoutY="202.0" mnemonicParsing="false" text="current2" />
+            <Button fx:id="missionButton" layoutX="98.0" layoutY="45.0" mnemonicParsing="false" text="Send mission" />
+            <Button fx:id="autoButton" layoutX="65.0" layoutY="70.0" mnemonicParsing="false" text="Auto" />
+            <Button fx:id="clearButton" layoutX="6.0" layoutY="45.0" mnemonicParsing="false" text="Clear missions" />
+            <Button fx:id="stabilButton" layoutX="5.0" layoutY="70.0" mnemonicParsing="false" text="Stabilize" />
+            <Button fx:id="currentButton" layoutX="9.0" layoutY="207.0" mnemonicParsing="false" text="Set current mission item" />
+            <Button fx:id="listButton" layoutX="7.0" layoutY="120.0" mnemonicParsing="false" text="List missions" />
+            <Button fx:id="guidedButton" layoutX="106.0" layoutY="70.0" mnemonicParsing="false" text="Guided" />
+            <TableView fx:id="missionTable" layoutX="-1.0" layoutY="391.0" prefHeight="160.0" prefWidth="600.0">
+              <columns>
+                <TableColumn fx:id="commandField" editable="false" prefWidth="120.0" sortable="false" text="Command type" />
+                <TableColumn fx:id="latField" prefWidth="120.0" sortable="false" text="Latitude" />
+                  <TableColumn fx:id="longField" prefWidth="120.0" sortable="false" text="Longitude" />
+                  <TableColumn fx:id="altField" prefWidth="120.0" sortable="false" text="Altitude" />
+                  <TableColumn fx:id="holdField" prefWidth="120.0" text="Hold time" />
+              </columns>
+               <columnResizePolicy>
+                  <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+               </columnResizePolicy>
+            </TableView>
+            <TextField fx:id="seqTextField" layoutX="6.0" layoutY="232.0" prefHeight="25.0" prefWidth="45.0" text="0" />
+            <TextField fx:id="holdTextfield" layoutX="106.0" layoutY="272.0" prefHeight="25.0" prefWidth="79.0" text="0" />
+            <Label layoutX="107.0" layoutY="255.0" text="Hold time" />
+            <Button fx:id="startButton" layoutX="8.0" layoutY="183.0" mnemonicParsing="false" text="Takeoff" />
+            <Button fx:id="stopButton" layoutX="65.0" layoutY="183.0" mnemonicParsing="false" text="Land" />
+            <Button fx:id="disarmButton" layoutX="47.0" layoutY="145.0" mnemonicParsing="false" text="Disarm" />
          </children>
       </AnchorPane>
    </children>
