@@ -10,10 +10,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Method;
 
 public class MainActivity extends AppCompatActivity {
@@ -60,9 +63,11 @@ public class MainActivity extends AppCompatActivity {
                 if (captivePortalState) {
                     enableCaptivePortalNetworking();
                     action2Btn.setTextColor(Color.parseColor("red"));
+                    Toast.makeText(getApplicationContext(),"Captive Portal Enabled", Toast.LENGTH_LONG).show();
                 } else {
                     disableCaptivePortalNetworking();
                     action2Btn.setTextColor(Color.parseColor("blue"));
+                    Toast.makeText(getApplicationContext(),"Captive Portal Disabled", Toast.LENGTH_LONG).show();
                 }
 
             }
@@ -76,9 +81,11 @@ public class MainActivity extends AppCompatActivity {
                 if (wifiState) {
                     enableTethering();
                     hotspotBtn.setTextColor(Color.parseColor("red"));
+                    Toast.makeText(getApplicationContext(),"Wifi Enabled", Toast.LENGTH_LONG).show();
                 } else {
                     disableTethering();
                     hotspotBtn.setTextColor(Color.parseColor("blue"));
+                    Toast.makeText(getApplicationContext(),"Wifi Disabled", Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -94,11 +101,9 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
                 webServerTask.start();
+                Toast.makeText(getApplicationContext(),"WebServer Enabled", Toast.LENGTH_LONG).show();
             }
         });
-
-
-
     }
 
     private void allowUser(String mac) {
@@ -109,52 +114,69 @@ public class MainActivity extends AppCompatActivity {
         runCommand("iptables -t mangle -D portal -m mac --mac-source "+mac+" -j RETURN");
     }
 
+    String host = "192.168.43.1";
+
     private void enableCaptivePortalNetworking() {
-        String commands = "echo \"1\" > /proc/sys/net/ipv4/ip_forward";
-        commands += "iptables -N portal -t mangle;";
+        String commands[] =
+                {
+                        "echo \"1\" > /proc/sys/net/ipv4/ip_forward",
+                        "iptables -N portal -t mangle;",
 
-        commands += "iptables -t mangle -I portal -j MARK --set-mark 37;";
-        //
-        commands += "iptables -t mangle -I PREROUTING -j portal;";
+                        "iptables -t mangle -I portal -j MARK --set-mark 37;",
+                        //
+                        "iptables -t mangle -I PREROUTING -j portal;",
 
-        commands += "iptables -t nat -I PREROUTING -m mark --mark 37 -p tcp --dport 80 -j DNAT --to-destination 192.168.43.1;";
+                        "iptables -t nat -I PREROUTING -m mark --mark 37 -p tcp --dport 80 -j DNAT --to-destination "+host+";",
 
-        commands += "iptables -t filter -I INPUT -m mark --mark 37 -j DROP;";
-        commands += "iptables -t filter -I INPUT -p udp --dport 53 -j ACCEPT;";
-        commands += "iptables -t filter -I INPUT -p tcp --dport 80 -j ACCEPT;";
-        commands += "iptables -t filter -I FORWARD -m mark --mark 37 -j DROP;";
-        //
-        commands += "iptables -I FORWARD -i wlan0 -o p2p0 -j ACCEPT;";
-        commands += "iptables -I FORWARD -i p2p0 -o wlan0 -m state --state ESTABLISHED,RELATED -j ACCEPT;";
+                        //commands += "iptables -t filter -I INPUT -m mark --mark 37 -j DROP;",
+                        "iptables -t filter -I INPUT -p udp --dport 53 -j ACCEPT;",
+                        "iptables -t filter -I INPUT -p tcp --dport 80 -j ACCEPT;",
+                        "iptables -t filter -I FORWARD -m mark --mark 37 -j DROP;",
+                        //
+                        "iptables -I FORWARD -i wlan0 -o p2p0 -j ACCEPT;",
+                        "iptables -I FORWARD -i p2p0 -o wlan0 -m state --state ESTABLISHED,RELATED -j ACCEPT;",
 
-        commands += "iptables -t nat -I POSTROUTING -o p2p0 -j MASQUERADE;";
-        runCommand(commands);
+                        "iptables -t nat -I POSTROUTING -o p2p0 -j MASQUERADE;"
+                };
+        /*for(String cmd : commands) {
+            runCommand(cmd);
+        }*/
+        runCommand("source /storage/sdcard0/start_portal_rules.sh");
+
     }
 
     private void disableCaptivePortalNetworking() {
-        String commands = "echo \"0\" > /proc/sys/net/ipv4/ip_forward";
-        commands += "iptables -N portal -t mangle;";
+        String commands[] = {
+                "echo \"0\" > /proc/sys/net/ipv4/ip_forward",
+                "iptables -N portal -t mangle;",
 
-        commands += "iptables -t mangle -D portal -j MARK --set-mark 37;";
+                "iptables -t mangle -D portal -j MARK --set-mark 37;",
 
-        commands += "iptables -t mangle -D PREROUTING -j portal;";
+                "iptables -t mangle -D PREROUTING -j portal;",
 
-        commands += "iptables -t nat -I PREROUTING -m mark --mark 37 -p tcp --dport 80 -j DNAT --to-destination 192.168.43.1;";
+                "iptables -t nat -I PREROUTING -m mark --mark 37 -p tcp --dport 80 -j DNAT --to-destination " + host + ";",
 
-        commands += "iptables -t filter -D INPUT -m mark --mark 37 -j DROP;";
-        commands += "iptables -t filter -D INPUT -p udp --dport 53 -j ACCEPT;";
-        commands += "iptables -t filter -D INPUT -p tcp --dport 80 -j ACCEPT;";
-        commands += "iptables -t filter -D FORWARD -m mark --mark 37 -j DROP;";
+                //;commands += "iptables -t filter -D INPUT -m mark --mark 37 -j DROP;";
+                "iptables -t filter -D INPUT -p udp --dport 53 -j ACCEPT;",
+                "iptables -t filter -D INPUT -p tcp --dport 80 -j ACCEPT;",
+                "iptables -t filter -D FORWARD -m mark --mark 37 -j DROP;",
 
-        commands += "iptables -D FORWARD -i wlan0 -o p2p0 -j ACCEPT;";
-        commands += "iptables -D FORWARD -i p2p0 -o wlan0 -m state --state ESTABLISHED,RELATED -j ACCEPT;";
+                "iptables -D FORWARD -i wlan0 -o p2p0 -j ACCEPT;",
+                "iptables -D FORWARD -i p2p0 -o wlan0 -m state --state ESTABLISHED,RELATED -j ACCEPT;",
 
-        commands += "iptables -t nat -D POSTROUTING -o p2p0 -j MASQUERADE;";
-        runCommand(commands);
+                "iptables -t nat -D POSTROUTING -o p2p0 -j MASQUERADE;"
+        };
+        /*for(String cmd : commands) {
+            runCommand(cmd);
+        }*/
+        runCommand("source /storage/sdcard0/stop_portal_rules.sh");
     }
 
-
     private void runCommand(String cmd) {
+        runCommand(new String[]{cmd});
+    }
+
+    private void runCommand(String[] cmds) {
         String END_OF_COMMAND = "END_OF_COMMAND";
         String line;
         String output = "";
@@ -163,15 +185,24 @@ public class MainActivity extends AppCompatActivity {
             DataOutputStream os = new DataOutputStream(process.getOutputStream());
             InputStream is = process.getInputStream();
             DataInputStream osRes = new DataInputStream(is);
-            os.writeBytes(cmd + ";echo "+END_OF_COMMAND+"\n");
-            os.flush();
+            UiLog("Commands: "+cmds.length);
+            for (String cmd :  cmds ) {
+                UiLog(cmd + ";echo " + END_OF_COMMAND + "\n");
+                os.writeBytes(cmd + ";echo " + END_OF_COMMAND + "\n");
+                os.flush();
 
-            while(true){
-                line = osRes.readLine();
-                if(line.contains(END_OF_COMMAND)) {
-                    break;
-                } else {
-                    output += line;
+                while (true) {
+                    line = osRes.readLine();
+                    if(null != line) {
+                        if (line.contains(END_OF_COMMAND)) {
+                            break;
+                        } else {
+                            output += line;
+                        }
+                    } else {
+                        break;
+                    }
+
                 }
             }
             if(!(output.trim().isEmpty())) {
@@ -180,7 +211,11 @@ public class MainActivity extends AppCompatActivity {
             os.writeBytes("exit\n");
             os.flush();
         } catch(Exception e) {
-            UiLog(e.getMessage());
+            e.printStackTrace();
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            UiLog(sw.toString());
         }
     }
 
