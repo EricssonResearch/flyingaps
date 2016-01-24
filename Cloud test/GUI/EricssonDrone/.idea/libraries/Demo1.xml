@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Demo1">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/out/production/Demo/generator.jar!/" />
+      <root url="jar://$PROJECT_DIR$/out/production/Demo/library.jar!/" />
+      <root url="jar://$PROJECT_DIR$/out/production/Demo/org.mavlink.util.jar!/" />
+      <root url="jar://$PROJECT_DIR$/out/production/Demo/org.mavlink.library.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
